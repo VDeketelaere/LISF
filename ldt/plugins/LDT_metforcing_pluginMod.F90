@@ -101,6 +101,7 @@ contains
     use gfs_forcingMod
     use merra2_forcingMod
     use era5_forcingMod
+    use agera5_forcingMod
     use gswp1_forcingMod
     use gswp2_forcingMod
 #if ( defined MF_AGRMET )
@@ -196,6 +197,11 @@ contains
     external timeinterp_era5
     external finalize_era5
     external reset_era5
+
+    external get_agera5
+    external timeinterp_agera5
+    external finalize_agera5
+    external reset_agera5
 
     external get_agrradps
     external timeinterp_agrradps
@@ -397,6 +403,13 @@ contains
     call registertimeinterpmetforc(trim(LDT_ERA5Id)//char(0),timeinterp_ERA5)
     call registerresetmetforc(trim(LDT_ERA5Id)//char(0),reset_ERA5)
     call registerfinalmetforc(trim(LDT_ERA5Id)//char(0),finalize_ERA5)
+
+! - AgERA5 Reanalysis Forcing:
+    call registerinitmetforc(trim(LDT_AgERA5Id)//char(0),init_AgERA5)
+    call registerretrievemetforc(trim(LDT_AgERA5Id)//char(0),get_AgERA5)
+    call registertimeinterpmetforc(trim(LDT_AgERA5Id)//char(0),timeinterp_AgERA5)
+    call registerresetmetforc(trim(LDT_AgERA5Id)//char(0),reset_AgERA5)
+    call registerfinalmetforc(trim(LDT_AgERA5Id)//char(0),finalize_AgERA5)
 
 ! - WRFv2 Analysis Forcing:
     call registerinitmetforc(trim(LDT_wrfoutv2Id)//char(0),init_WRFoutv2)
