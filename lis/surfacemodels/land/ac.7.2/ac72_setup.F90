@@ -695,7 +695,10 @@ subroutine AC72_setup()
               write(LIS_logunit,*) "[ERR] AC72 only runs with NLDAS 2/10m fields"
               write(LIS_logunit,*) "[ERR] Program stopping ..."
               call LIS_endrun
-           endif                 
+           endif    
+        elseif (LIS_rc%metforc(m) == "AgERA5") then
+              AC72_struc(n)%forchgt_tq = 2
+              AC72_struc(n)%forchgt_uv = 2                       
         else
            write(LIS_logunit,*) "[ERR] AC72 only runs with the following met forcings: ERA5, MERRA2, NLDAS2"
            write(LIS_logunit,*) "[ERR] Program stopping ..."
@@ -787,6 +790,8 @@ subroutine AC72_setup()
                     elevdiff = (LIS_domain(n)%tile(t)%elev + 2) &
                     - (LIS_forc(n,m)%modelelev(LIS_domain(n)%tile(t)%index) + AC72_struc(n)%forchgt_tq)                   
                     tmp = placeholder(col, row) + (lapse * elevdiff) ! apply lapse-rate corr
+                 elseif (LIS_rc%metforc(m) == "AgERA5") then
+                     tmp = placeholder(col, row)
                  else
                     write(LIS_logunit,*) "[ERR] AC72 only runs with lapse-rate correction turned ON."
                     write(LIS_logunit,*) "[ERR] Program stopping ..."
@@ -812,6 +817,8 @@ subroutine AC72_setup()
                     elevdiff = (LIS_domain(n)%tile(t)%elev + 2) &
                     - (LIS_forc(n,m)%modelelev(LIS_domain(n)%tile(t)%index) + AC72_struc(n)%forchgt_tq)                    
                     tmp = placeholder(col, row) + (lapse * elevdiff) ! apply lapse-rate corr
+                 elseif (LIS_rc%metforc(m) == "AgERA5") then
+                     tmp = placeholder(col, row)                    
                  else
                     write(LIS_logunit,*) "[ERR] AC72 only runs with lapse-rate correction turned ON."
                     write(LIS_logunit,*) "[ERR] Program stopping ..."

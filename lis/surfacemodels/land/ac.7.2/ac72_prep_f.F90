@@ -126,7 +126,7 @@ contains
     use LIS_timeMgrMod,     only: LIS_advance_timestep, LIS_is_last_step
     use gmaopert_Mod,       only: forcPert, forcpertdec
 
-
+    use agera5_forcingMod,  only: agera5_struc
     !
     ! !DESCRIPTION:
     !
@@ -146,7 +146,8 @@ contains
     type(lisrcdec)        :: LIS_rc_saved
     type(forcpertdec), allocatable :: forcPert_saved(:)
     integer               :: i, j, k, t, status, met_ts, m, tid
-    integer               :: yr_start
+    integer               :: yr_start, gindex
+    logical               :: using_agera5
     real, parameter :: lapse = -0.0065
 
     ! Near Surface Air Temperature [K]
@@ -160,6 +161,13 @@ contains
     external :: finalmetforc, initmetforc
 
     write(LIS_logunit,*) "[INFO] AC72: new simulation period, reading of temperature record..."
+
+   ! Check if using AgERA5
+   using_agera5 = .false.
+   if (trim(LIS_rc%metforc(1)) == "AgERA5") then
+      using_agera5 = .true.
+      write(LIS_logunit,*) "[INFO] AC72: Using AgERA5 - reading daily Tmin/Tmax directly"
+   endif
 
     ! Save current LIS_rc
     LIS_rc_saved = LIS_rc
@@ -178,17 +186,21 @@ contains
     enddo
     LIS_rc%rstflag(n) = 1
 
-    met_ts = int(86400./LIS_rc%ts)
 
     allocate(daily_tmax_arr(LIS_rc%npatch(n,LIS_rc%lsm_index),366))
     allocate(daily_tmin_arr(LIS_rc%npatch(n,LIS_rc%lsm_index),366))
-    allocate(subdaily_arr(LIS_rc%npatch(n,LIS_rc%lsm_index),met_ts))
-    daily_tmax_arr = 0
-    daily_tmin_arr = 0
 
-    if (AC72_struc(n)%Rainfall_crit) then
-        allocate(daily_pcp_arr(LIS_rc%npatch(n,LIS_rc%lsm_index),366))
-        daily_pcp_arr = 0
+    if (.not. using_agera5) then
+      met_ts = int(86400./LIS_rc%ts)
+      allocate(subdaily_arr(LIS_rc%npatch(n,LIS_rc%lsm_index),met_ts))
+      daily_tmax_arr = 0
+      daily_tmin_arr = 0
+    
+
+        if (AC72_struc(n)%Rainfall_crit) then
+            allocate(daily_pcp_arr(LIS_rc%npatch(n,LIS_rc%lsm_index),366))
+            daily_pcp_arr = 0
+        endif
     endif
 
     ! Set LIS_rc time to beginning of simulation period (in case of restart)
@@ -202,23 +214,39 @@ contains
     LIS_rc%syr = yr_start
     LIS_rc%smo = AC72_struc(n)%Sim_AnnualStartMonth
     LIS_rc%sda = AC72_struc(n)%Sim_AnnualStartDay
-    LIS_rc%shr = LIS_rc%hr+1
+    if (using_agera5) then
+       LIS_rc%shr = 0  ! Daily AgERA5 data starts at 00:00:00
+    else
+       LIS_rc%shr = LIS_rc%hr+1  ! Original behavior for hourly data
+    endif
+
     call LIS_resetTimeMgr
+
     day_loop: do i=1,366
-       do j=1,met_ts
-          ! read met forcing
-          call LIS_get_met_forcing(n)
+         
+      if (using_agera5) then
+            ! *** NEW AgERA5 PATH ***
+         call get_agera5(n,1)  ! This populates metdata1
+            
+         do t=1,LIS_rc%npatch(n,LIS_rc%lsm_index)
+            ! *** KEY FIX: Use gindex, not tile_id ***
+            gindex = LIS_surface(n, LIS_rc%lsm_index)%tile(t)%index
+               
+            ! *** KEY FIX: Direct access to metdata1 with gindex ***
+            daily_tmin_arr(t,i) = agera5_struc(n)%metdata1(1, 3, gindex)  ! Tmin [K]
+            daily_tmax_arr(t,i) = agera5_struc(n)%metdata1(1, 4, gindex)  ! Tmax [K]
+         enddo
+            
+         call LIS_advance_timestep(LIS_rc)
+            
+      else
+         ! *** ORIGINAL PATH for MERRA2, etc. ***
+         do j=1,met_ts
+            call LIS_get_met_forcing(n)
           call LIS_perturb_forcing(n)
-
-          ! Get Tair
-          call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Tair%varname(1)), tmpField, rc=status)
-          call LIS_verify(status, "AC72_prep_f: error getting Tair")
-
-          call ESMF_FieldGet(tmpField, localDE = 0, farrayPtr = tmp, rc = status)
-          call LIS_verify(status, "AC72_prep_f: error retrieving Tair")
-
-          ! Store temperatures
-          subdaily_arr(:,j) = tmp
+            call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Tair%varname(1)), tmpField, rc=status)
+            call ESMF_FieldGet(tmpField, localDE=0, farrayPtr=tmp, rc=status)
+            subdaily_arr(:,j) = tmp
 
           if (AC72_struc(n)%Rainfall_crit) then
             call LIS_perturb_forcing(n)
@@ -231,22 +259,28 @@ contains
 
             daily_pcp_arr(:,i) = daily_pcp_arr(:,i) + pcp*LIS_rc%ts
           endif
-
-          ! Change LIS time to the next meteo time step
-          call LIS_advance_timestep(LIS_rc)
-       enddo
-       ! Store daily max and min temperatures
-       daily_tmax_arr(:,i) = maxval(subdaily_arr,2)
-       daily_tmin_arr(:,i) = minval(subdaily_arr,2)
-       if ((LIS_rc%da.eq.AC72_struc(n)%Sim_AnnualStartDay)&
-            .and.(LIS_rc%mo.eq.AC72_struc(n)%Sim_AnnualStartMonth)&
-            .and.(LIS_rc%hr.eq.LIS_rc_saved%hr+1)&
-            .and.(i.ne.1)) exit day_loop
-       ! Exit if we reach end of sim period
-       ! but still include the last hour
+            call LIS_advance_timestep(LIS_rc)
+         enddo
+         daily_tmax_arr(:,i) = maxval(subdaily_arr,2)
+         daily_tmin_arr(:,i) = minval(subdaily_arr,2)
+      endif
+         
+      ! Exit conditions (also modified for AgERA5)
+      if (using_agera5) then
+         if ((LIS_rc%da.eq.AC72_struc(n)%Sim_AnnualStartDay) .and. &
+            (LIS_rc%mo.eq.AC72_struc(n)%Sim_AnnualStartMonth) .and. &
+            (LIS_rc%hr.eq.0) .and. (i.ne.1)) exit day_loop
+      else
+         if ((LIS_rc%da.eq.AC72_struc(n)%Sim_AnnualStartDay) .and. &
+            (LIS_rc%mo.eq.AC72_struc(n)%Sim_AnnualStartMonth) .and. &
+            (LIS_rc%hr.eq.LIS_rc_saved%hr+1) .and. (i.ne.1)) exit day_loop
+      endif
+         
     enddo day_loop
 
-    deallocate(subdaily_arr)
+    if (.not. using_agera5) then
+       deallocate(subdaily_arr)
+    endif
 
     ! lapse-rate correct the temperature records
     daily_tmax_arr(:,:) = daily_tmax_arr(:,:) + (lapse * (2 -AC72_struc(n)%forchgt_tq))

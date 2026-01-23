@@ -144,6 +144,10 @@ subroutine LIS_metforcing_plugin
    use era5_forcingMod
 #endif
 
+#if ( defined MF_AgERA5 )
+   use agera5_forcingMod
+#endif
+
 #if ( defined MF_GSWP1 )
    use gswp1_forcingMod
 #endif
@@ -404,6 +408,13 @@ subroutine LIS_metforcing_plugin
    external timeinterp_era5
    external finalize_era5
    external reset_era5
+#endif
+
+#if ( defined MF_AgERA5 )
+   external get_agera5
+   external timeinterp_agera5
+   external finalize_agera5
+   external reset_agera5
 #endif
 
 #if ( defined MF_GSWP1 )
@@ -833,6 +844,16 @@ subroutine LIS_metforcing_plugin
                                   timeinterp_era5)
    call registerresetmetforc(trim(LIS_era5Id)//char(0),reset_era5)
    call registerfinalmetforc(trim(LIS_era5Id)//char(0),finalize_era5)
+#endif
+
+#if ( defined MF_AgERA5)
+! - ERA5 Reanalysis Forcing:
+   call registerinitmetforc(trim(LIS_agera5Id)//char(0),init_agera5)
+   call registerretrievemetforc(trim(LIS_agera5Id)//char(0),get_agera5)
+   call registertimeinterpmetforc(trim(LIS_agera5Id)//char(0), &
+                                  timeinterp_agera5)
+   call registerresetmetforc(trim(LIS_agera5Id)//char(0),reset_agera5)
+   call registerfinalmetforc(trim(LIS_agera5Id)//char(0),finalize_agera5)
 #endif
 
 #if ( defined MF_GSWP1 )

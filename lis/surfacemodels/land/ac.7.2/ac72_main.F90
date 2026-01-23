@@ -502,10 +502,11 @@ subroutine AC72_main(n)
   use AC72_lsmMod
   use ac72_prep_f
   use LIS_constantsMod, only: LIS_CONST_TKFRZ
-  use LIS_coreMod, only: LIS_rc, LIS_surface, LIS_domain
+  use LIS_coreMod, only: LIS_rc, LIS_surface, LIS_domain, LIS_config
   use LIS_histDataMod
   use LIS_logMod, only     : LIS_logunit, LIS_endrun
   use LIS_timeMgrMod, only : LIS_isAlarmRinging, LIS_get_julhr
+  use ESMF
 #if (defined SPMD)
   use LIS_mpiMod
 #endif
@@ -525,6 +526,8 @@ subroutine AC72_main(n)
   integer              :: l
   integer              :: irr_record_flag, DNr ! for irri file management
   character(250)       :: TempStr
+  integer              :: rc
+  logical              :: isAgERA5
 
   ! Initialization management
   integer              :: read_Trecord_flag, InitializeRun_flag
@@ -562,6 +565,13 @@ subroutine AC72_main(n)
   !  \end{description}
   !EOP
 
+   ! Check if using AgERA5
+   isAgERA5 = .false.
+   call ESMF_ConfigFindLabel(LIS_config, "AgERA5 forcing directory:", rc = rc)
+   if (rc == ESMF_SUCCESS) then
+      isAgERA5 = .true.
+   endif
+
   ! define variables for AC72
   ! check AC72 alarm. If alarm is ring, run model.
   alarmCheck = LIS_isAlarmRinging(LIS_rc, "AC72 model alarm")
@@ -598,26 +608,90 @@ subroutine AC72_main(n)
       !!------ This Block Is Where We Obtain Weather Forcing ------------------------------!!
       ! retrieve forcing data from AC72_struc(n)%ac72(t) and assign to local variables
 
+   if (isAgERA5) then
+      !-----------------------------------------------------------------------
+      ! AgERA5 path: use daily Tmin/Tmax/Rainf/ETo
+      ! Skip PRES, TDEW, SWRAD, WIND checks (not provided)
+      !-----------------------------------------------------------------------
+      
+      ! PRECIP: daily precipitation (mm/day)
+      if (AC72_struc(n)%forc_count > 0) then
+         tmp_precip = (AC72_struc(n)%ac72(t)%prcp / AC72_struc(n)%forc_count) * 3600.0 * 24.0
+      else
+         tmp_precip = AC72_struc(n)%ac72(t)%prcp * 3600.0 * 24.0
+      endif
+      
+      ! TMAX/TMIN: Kelvin -> Celsius
+      tmp_tmax = AC72_struc(n)%ac72(t)%tmax - LIS_CONST_TKFRZ
+      tmp_tmin = AC72_struc(n)%ac72(t)%tmin - LIS_CONST_TKFRZ
+      
+      ! ETo: use AgERA5 ETo directly (daily value)
+      tmp_eto = AC72_struc(n)%ac72(t)%eto
+      
+      ! Minimal validity checks for vars actually used in AgERA5 path
+      if (tmp_precip .eq. LIS_rc%udef) then
+         write(LIS_logunit, *) "undefined value for PRECIP (AgERA5) in AC72"
+         call LIS_endrun()
+      endif
+      
+      if (tmp_tmax .eq. LIS_rc%udef) then
+         write(LIS_logunit, *) "undefined value for TMAX (AgERA5) in AC72"
+         call LIS_endrun()
+      endif
+      
+      if (tmp_tmin .eq. LIS_rc%udef) then
+         write(LIS_logunit, *) "undefined value for TMIN (AgERA5) in AC72"
+         call LIS_endrun()
+      endif
+      
+      if (tmp_eto .eq. LIS_rc%udef) then
+         write(LIS_logunit, *) "undefined value for ETo (AgERA5) in AC72"
+         call LIS_endrun()
+      endif
+      
+      ! Pass to AquaCrop
+      call SetRain(tmp_precip)
+      call SetETo(tmp_eto)
+      call SetTmin(tmp_tmin)
+      call SetTmax(tmp_tmax)
+
+   else
+      !-----------------------------------------------------------------------
+      ! Non-AgERA5 path: average subdaily fields and compute ETo
+      !-----------------------------------------------------------------------
+      
+      ! Effective count guard
+      if (AC72_struc(n)%forc_count <= 0) then
+         write(LIS_logunit, *) "AC72_main: forc_count <= 0 in non-AgERA5 path"
+         call LIS_endrun()
+      endif
+      
+      ! Compute ETo from meteorological variables
+      call ac72_ETo_calc(tmp_pres, tmp_tmax, tmp_tmin, tmp_tdew, &
+                        tmp_wind, tmp_swrad, tmp_elev, lat, tmp_eto)
+      
+      AC72_struc(n)%ac72(t)%eto = tmp_eto
+      
       ! PRES: Daily average surface pressure (kPa)
-      tmp_pres      = (AC72_struc(n)%ac72(t)%psurf / AC72_struc(n)%forc_count) / 1000
-
-      ! PRECIP: Total daily precipitation (rain+snow) (mm)
-      tmp_precip    = (AC72_struc(n)%ac72(t)%prcp / AC72_struc(n)%forc_count) * 3600. * 24. !Convert from kg/ms2 to mm/d
-
+      tmp_pres = (AC72_struc(n)%ac72(t)%psurf / AC72_struc(n)%forc_count) / 1000.0
+      
+      ! PRECIP: Total daily precipitation (mm)
+      tmp_precip = (AC72_struc(n)%ac72(t)%prcp / AC72_struc(n)%forc_count) * 3600. * 24.
+      
       ! TMAX: maximum daily air temperature (degC)
-      tmp_tmax      = AC72_struc(n)%ac72(t)%tmax - LIS_CONST_TKFRZ !Convert from K to C
-
+      tmp_tmax = AC72_struc(n)%ac72(t)%tmax - LIS_CONST_TKFRZ
+      
       ! TMIN: minimum daily air temperature (degC)
-      tmp_tmin      = AC72_struc(n)%ac72(t)%tmin - LIS_CONST_TKFRZ !Convert from K to C
-
+      tmp_tmin = AC72_struc(n)%ac72(t)%tmin - LIS_CONST_TKFRZ
+      
       ! TDEW: average daily dewpoint temperature (degC)
-      tmp_tdew      = (AC72_struc(n)%ac72(t)%tdew / AC72_struc(n)%forc_count) - LIS_CONST_TKFRZ !Convert from K to C
-
+      tmp_tdew = (AC72_struc(n)%ac72(t)%tdew / AC72_struc(n)%forc_count) - LIS_CONST_TKFRZ
+      
       ! SW_RAD: daily total incoming solar radiation (MJ/(m2d))
-      tmp_swrad     = (AC72_struc(n)%ac72(t)%swdown / AC72_struc(n)%forc_count) * 0.0864 !Convert from W/m2 to MJ/(m2d)
-
+      tmp_swrad = (AC72_struc(n)%ac72(t)%swdown / AC72_struc(n)%forc_count) * 0.0864
+      
       ! Wind: daily average wind speed (m/s)
-      tmp_wind      = AC72_struc(n)%ac72(t)%wndspd / AC72_struc(n)%forc_count
+      tmp_wind = AC72_struc(n)%ac72(t)%wndspd / AC72_struc(n)%forc_count
 
       ! check validity of PRES
       if(tmp_pres .eq. LIS_rc%udef) then
@@ -668,11 +742,14 @@ subroutine AC72_main(n)
          call LIS_endrun()
       endif
 
+
       ! Call ETo subroutine
       call ac72_ETo_calc(tmp_pres, tmp_tmax, tmp_tmin, tmp_tdew, &
             tmp_wind, tmp_swrad, &
             tmp_elev, lat, tmp_eto)
       AC72_struc(n)%ac72(t)%eto = tmp_eto
+
+   endif
 
       if (AC72_struc(n)%ac72(t)%valid_sim.eq.1) then ! prepare and run AquaCrop
 
