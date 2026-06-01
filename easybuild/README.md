@@ -14,11 +14,11 @@ A directory in your `$VSC_DATA` is proposed. Please accept it unless you know wh
 
 Now, you are ready to start building LIS or LDT. First, make sure you are in the top directory of LISF, so not in the `ldt` or the `lis` subdirectory. Then run:
 ```bash
-eb easybuild/LISF-LDT-dev-intel-2023b.eb
+eb easybuild/LISF-LDT-dev-intel-2025b.eb
 ```
 for LDT, or:
 ```bash
-eb easybuild/LISF-LIS-dev-intel-2023b.eb
+eb easybuild/LISF-LIS-dev-intel-2025b.eb
 ```
 for LIS. If everything goes right, this should build and install LDT/LIS as currently found in the LISF directory.
 
