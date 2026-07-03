@@ -5166,10 +5166,19 @@ subroutine LoadCrop(FullName)
        call SetCrop_GDDaysToHarvest(TempInt)
     endif
 
-    read(fhandle, *) TempInt
-    call SetCrop_GDDaysToFlowering(TempInt)
-    read(fhandle, *) TempInt
-    call SetCrop_GDDLengthFlowering(TempInt)
+    ! When 'External' is set for GDD parameters, do not set GDD Crop parameters
+    read(fhandle, '(A)') buffer
+    read(buffer, *, iostat=rc) TempInt
+    if (rc == 0) then
+       call SetCrop_GDDaysToFlowering(TempInt)
+    endif
+    
+    ! When 'External' is set for GDD parameters, do not set GDD Crop parameters
+    read(fhandle, '(A)') buffer
+    read(buffer, *, iostat=rc) TempInt
+    if (rc == 0) then
+       call SetCrop_GDDLengthFlowering(TempInt)
+    endif
 
     ! When 'External' is set for GDD parameters, do not set GDD Crop parameters
     read(fhandle, '(A)') buffer
@@ -5184,8 +5193,12 @@ subroutine LoadCrop(FullName)
        call SetCrop_GDDCDC(TempDouble)
     endif
 
-    read(fhandle, *) TempInt
-    call SetCrop_GDDaysToHIo(TempInt)
+    ! When 'External' is set for GDD parameters, do not set GDD Crop parameters
+    read(fhandle, '(A)') buffer
+    read(buffer, *, iostat=rc) TempInt
+    if (rc == 0) then
+       call SetCrop_GDDaysToHIo(TempInt)
+    endif
 
     ! -----  UPDATE yield response to water for Version 3.1
     ! leafy vegetable crop has an Harvest Index which builds up

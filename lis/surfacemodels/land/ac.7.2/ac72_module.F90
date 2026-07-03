@@ -112,8 +112,11 @@ module AC72_module
      real               :: RootZoneWC_ZtopThresh
      integer               :: GDDaysToGermination
      integer               :: GDDaysToHarvest
+     integer               :: GDDaysToFlowering
+     integer               :: GDDaysToHIo
      integer               :: GDDaysToSenescence
      integer               :: GDDaysToMaxRooting
+     integer               :: GDDLengthFlowering
      real               :: GDDCGC
      real               :: GDDCDC
      type(rep_RootZoneWC) :: RootZoneWC

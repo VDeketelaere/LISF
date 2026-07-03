@@ -130,8 +130,11 @@ module AC72_lsmMod
      character*128      :: LDT_ncvar_tmaxcli_monthly
      character*128      :: LDT_ncvar_gdd_cco
      character*128      :: LDT_ncvar_gdd_maturity
+     character*128      :: LDT_ncvar_gdd_flowering
+     character*128      :: LDT_ncvar_gdd_hio
      character*128      :: LDT_ncvar_gdd_senescence
      character*128      :: LDT_ncvar_gdd_maxr
+     character*128      :: LDT_ncvar_gdd_lengthflowering
      character*128      :: LDT_ncvar_cgc
      character*128      :: LDT_ncvar_cdc
 

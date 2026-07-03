@@ -297,8 +297,11 @@ subroutine AC72_main(n)
        SetZiAqua,&
        SetCrop_GDDaysToGermination,&
        SetCrop_GDDaysToHarvest,&
+       SetCrop_GDDaysToFlowering,&
+       SetCrop_GDDaysToHIo,&
        SetCrop_GDDaysToMaxRooting,&
        SetCrop_GDDaysToSenescence,&
+       SetCrop_GDDLengthFlowering,&
        SetCrop_GDDCGC,&
        SetCrop_GDDCDC,&
        typeproject_typeprm, &
@@ -850,7 +853,10 @@ subroutine AC72_main(n)
             call SetCrop_GDDaysToGermination(AC72_struc(n)%AC72(t)%GDDaysToGermination)
             call SetCrop_GDDaysToHarvest(AC72_struc(n)%AC72(t)%GDDaysToHarvest)
             call SetCrop_GDDaysToMaxRooting(AC72_struc(n)%AC72(t)%GDDaysToMaxRooting)
+            call SetCrop_GDDaysToFlowering(AC72_struc(n)%AC72(t)%GDDaysToFlowering)
+            call SetCrop_GDDaysToHIo(AC72_struc(n)%AC72(t)%GDDaysToHIo)
             call SetCrop_GDDaysToSenescence(AC72_struc(n)%AC72(t)%GDDaysToSenescence)
+            call SetCrop_GDDLengthFlowering(AC72_struc(n)%AC72(t)%GDDLengthFlowering)
             call SetCrop_GDDCGC(AC72_struc(n)%AC72(t)%GDDCGC)
             call SetCrop_GDDCDC(AC72_struc(n)%AC72(t)%GDDCDC)
          endif

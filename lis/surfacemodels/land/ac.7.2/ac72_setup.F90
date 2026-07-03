@@ -214,7 +214,10 @@ subroutine AC72_setup()
        SetCrop_GDDaysToGermination,&
        SetCrop_GDDaysToHarvest,&
        SetCrop_GDDaysToMaxRooting,&
+       SetCrop_GDDaysToFlowering,&
+       SetCrop_GDDaysToHIo,&        
        SetCrop_GDDaysToSenescence,&
+       SetCrop_GDDLengthFlowering,&
        SetCrop_GDDCGC,&
        SetCrop_GDDCDC,&
        SetInfiltrated,&
@@ -718,8 +721,11 @@ subroutine AC72_setup()
      if ( &
         LIS_param_has_var(n, trim(AC72_struc(n)%LDT_ncvar_gdd_cco))        .and. &
         LIS_param_has_var(n, trim(AC72_struc(n)%LDT_ncvar_gdd_maturity))  .and. &
+        LIS_param_has_var(n, trim(AC72_struc(n)%LDT_ncvar_gdd_flowering))  .and. &
+        LIS_param_has_var(n, trim(AC72_struc(n)%LDT_ncvar_gdd_hio))  .and. &
         LIS_param_has_var(n, trim(AC72_struc(n)%LDT_ncvar_gdd_senescence)).and. &
         LIS_param_has_var(n, trim(AC72_struc(n)%LDT_ncvar_gdd_maxr))      .and. &
+        LIS_param_has_var(n, trim(AC72_struc(n)%LDT_ncvar_gdd_lengthflowering))      .and. &
         LIS_param_has_var(n, trim(AC72_struc(n)%LDT_ncvar_cgc))           .and. &
         LIS_param_has_var(n, trim(AC72_struc(n)%LDT_ncvar_cdc)) ) then
 
@@ -741,6 +747,22 @@ subroutine AC72_setup()
             AC72_struc(n)%ac72(t)%GDDaysToHarvest = placeholder(col, row)
         enddo 
 
+        write(LIS_logunit,*) "AC72: reading parameter GDD_flowering from ", trim(LIS_rc%paramfile(n))
+        call LIS_read_param(n, trim(AC72_struc(n)%LDT_ncvar_gdd_flowering), placeholder)
+        do t = 1, LIS_rc%npatch(n, mtype)
+            col = LIS_surface(n, mtype)%tile(t)%col
+            row = LIS_surface(n, mtype)%tile(t)%row
+            AC72_struc(n)%ac72(t)%GDDaysToFlowering = placeholder(col, row)
+        enddo
+        
+        write(LIS_logunit,*) "AC72: reading parameter GDD_HIo from ", trim(LIS_rc%paramfile(n))
+        call LIS_read_param(n, trim(AC72_struc(n)%LDT_ncvar_gdd_hio), placeholder)
+        do t = 1, LIS_rc%npatch(n, mtype)
+            col = LIS_surface(n, mtype)%tile(t)%col
+            row = LIS_surface(n, mtype)%tile(t)%row
+            AC72_struc(n)%ac72(t)%GDDaysToHIo = placeholder(col, row)
+        enddo 
+
         write(LIS_logunit,*) "AC72: reading parameter GDD_senescence from ", trim(LIS_rc%paramfile(n))
         call LIS_read_param(n, trim(AC72_struc(n)%LDT_ncvar_gdd_senescence), placeholder)
         do t = 1, LIS_rc%npatch(n, mtype)
@@ -755,6 +777,14 @@ subroutine AC72_setup()
             col = LIS_surface(n, mtype)%tile(t)%col
             row = LIS_surface(n, mtype)%tile(t)%row
             AC72_struc(n)%ac72(t)%GDDaysToMaxRooting = placeholder(col, row)
+        enddo 
+
+        write(LIS_logunit,*) "AC72: reading parameter GDD_lengthflowering from ", trim(LIS_rc%paramfile(n))
+        call LIS_read_param(n, trim(AC72_struc(n)%LDT_ncvar_gdd_lengthflowering), placeholder)
+        do t = 1, LIS_rc%npatch(n, mtype)
+            col = LIS_surface(n, mtype)%tile(t)%col
+            row = LIS_surface(n, mtype)%tile(t)%row
+            AC72_struc(n)%ac72(t)%GDDLengthFlowering = placeholder(col, row)
         enddo 
 
         write(LIS_logunit,*) "AC72: reading parameter CGC from ", trim(LIS_rc%paramfile(n))
@@ -1182,6 +1212,9 @@ subroutine AC72_setup()
             call SetCrop_GDDaysToHarvest(AC72_struc(n)%ac72(t)%GDDaysToHarvest)
             call SetCrop_GDDaysToMaxRooting(AC72_struc(n)%ac72(t)%GDDaysToMaxRooting)
             call SetCrop_GDDaysToSenescence(AC72_struc(n)%ac72(t)%GDDaysToSenescence)
+            call SetCrop_GDDaysToFlowering(AC72_struc(n)%ac72(t)%GDDaysToFlowering)
+            call SetCrop_GDDaysToHIo(AC72_struc(n)%ac72(t)%GDDaysToHIo)
+            call SetCrop_GDDLengthFlowering(AC72_struc(n)%ac72(t)%GDDLengthFlowering)
             call SetCrop_GDDCGC(AC72_struc(n)%ac72(t)%GDDCGC)
             call SetCrop_GDDCDC(AC72_struc(n)%ac72(t)%GDDCDC)
         endif

@@ -313,8 +313,11 @@ subroutine AC72_readcrd()
      AC72_struc(n)%LDT_ncvar_tmaxcli_monthly = 'AC_Tmax_clim'
      AC72_struc(n)%LDT_ncvar_gdd_cco = 'GDD_CCo'
      AC72_struc(n)%LDT_ncvar_gdd_maturity = 'GDD_maturity'
+     AC72_struc(n)%LDT_ncvar_gdd_flowering = 'GDD_flowering'
+     AC72_struc(n)%LDT_ncvar_gdd_hio= 'GDD_HIo'
      AC72_struc(n)%LDT_ncvar_gdd_senescence = 'GDD_senescence'
      AC72_struc(n)%LDT_ncvar_gdd_maxr = 'GDD_maxR'
+     AC72_struc(n)%LDT_ncvar_gdd_lengthflowering = 'GDD_lengthflowering'
      AC72_struc(n)%LDT_ncvar_cgc = 'CGC'
      AC72_struc(n)%LDT_ncvar_cdc = 'CDC'
   enddo
