@@ -554,7 +554,7 @@ subroutine AC72_main(n)
   real(sp)             :: RatDGDD
 
     ! For flexible planting/sowing with criteria
-  integer              :: start_day_t, start_day_p
+  integer              :: start_day_t, start_day_p, start_day_tb
   integer              :: time1julhours, timerefjulhours, time1days, time2days
 
   !
@@ -984,6 +984,22 @@ subroutine AC72_main(n)
                call set_project_input(AC72_struc(n)%irun, 'Crop_Day1', start_day_t)
            endif
 
+           if (AC72_struc(n)%Temp_crit_below) then
+               ! Search start and add it to sim (for use with below minimum temp crit)
+               ! Define start sim (already done before)
+               call LIS_get_julhr(1901,1,1,0,0,0,timerefjulhours)
+               call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%Sim_AnnualStartMonth, &
+                     AC72_struc(n)%Sim_AnnualStartDay,0,0,0,time1julhours)
+               time1days = (time1julhours - timerefjulhours)/24 + 1
+               call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%Crop_AnnualStartMonth, &
+                     AC72_struc(n)%Crop_AnnualStartDay,0,0,0,time1julhours)
+               time2days = (time1julhours - timerefjulhours)/24 + 1
+               start_day_tb = ac72_search_start_TempBelow(time1days,time2days,AC72_struc(n)%crit_window, &
+                                                AC72_struc(n)%Temp_crit_tmax_below, AC72_struc(n)%Temp_crit_below_days, &
+                                                AC72_struc(n)%Temp_crit_below_occurrence, AC72_struc(n)%ac72(t)%Tmax_record)
+               call set_project_input(AC72_struc(n)%irun, 'Crop_Day1', start_day_tb)
+           endif
+
            if (AC72_struc(n)%Rainfall_crit) then
                ! Search start and add it to sim 
                ! Define start sim (already done before)
@@ -1001,7 +1017,11 @@ subroutine AC72_main(n)
            endif
 
            if (AC72_struc(n)%Temp_crit.and.AC72_struc(n)%Rainfall_crit) then
-               call set_project_input(AC72_struc(n)%irun, 'Crop_Day1', max(start_day_t, start_day_t))
+               call set_project_input(AC72_struc(n)%irun, 'Crop_Day1', max(start_day_t, start_day_p))
+           endif
+
+           if (AC72_struc(n)%Temp_crit_below.and.AC72_struc(n)%Rainfall_crit) then
+               call set_project_input(AC72_struc(n)%irun, 'Crop_Day1', max(start_day_tb, start_day_p))
            endif
 
             ! Set Global variable to pass T record to AquaCrop

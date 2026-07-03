@@ -80,13 +80,13 @@ module AC72_lsmMod
   ! \item[forchgt_uv]
   !   forcing height for wind speed
     ! \item[Temp_crit]
-  !   Uses a temperature criterion for sowing/planting
+  !   Uses an above-minimum temperature criterion for sowing/planting
   ! \item[Temp_crit_tmin]
-  !   Minimum temperature threshold (temperature criterion for sowing/planting)
+  !   Minimum temperature threshold (above-minimum temperature criterion for sowing/planting)
   ! \item[Temp_crit_days]
-  !   number of consecutive days (temperature criterion for sowing/planting)
+  !   number of consecutive days (above-minimum temperature criterion for sowing/planting)
   ! \item[Temp_crit_occurrence]
-  !   Number of occurrences (temperature criterion for sowing/planting)
+  !   Number of occurrences (above-minimum temperature criterion for sowing/planting)
   ! \item[Rainfall_crit]
   !   Uses a rainfall criterion for sowing/planting
   ! \item[Rainfall_crit_amount]
@@ -97,6 +97,14 @@ module AC72_lsmMod
   !   Number of occurrences (rainfall criterion for sowing/planting)
   ! \item[crit_window]
   !   Length of search window in days (rainfall and/or criterion for sowing/planting)
+  ! \item[Temp_crit_below]
+  !   Uses a below-maximum temperature criterion for sowing/planting
+  ! \item[Temp_crit_tmax_below]
+  !   Maximum temperature threshold (below-maximum temperature criterion for sowing/planting)
+  ! \item[Temp_crit_below_days]
+  !   number of consecutive days (below-maximum temperature criterion for sowing/planting)
+  ! \item[Temp_crit_below_occurrence]
+  !   Number of occurrences (below-maximum temperature criterion for sowing/planting)
 
   !
   ! !REVISION HISTORY:
@@ -195,6 +203,10 @@ module AC72_lsmMod
      integer            :: Rainfall_crit_days
      integer            :: Rainfall_crit_occurrence
      integer            :: crit_window
+     logical            :: Temp_crit_below
+     integer            :: Temp_crit_tmax_below
+     integer            :: Temp_crit_below_days
+     integer            :: Temp_crit_below_occurrence
      logical            :: QC_opt
      type(AC72dec), pointer :: ac72(:)
 

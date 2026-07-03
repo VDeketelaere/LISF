@@ -312,7 +312,7 @@ integer function ac72_search_start_Temp(startsim_julian_days, startcrop_julian_d
     !
     ! !DESCRIPTION:
     !
-    !  This function finds the planting/sowing date based on a temperature
+    !  This function finds the planting/sowing date based on an above-minimum temperature
     !  criterion defined in the lis.config
     !
     !
@@ -367,6 +367,68 @@ integer function ac72_search_start_Temp(startsim_julian_days, startcrop_julian_d
     ac72_search_start_Temp = startcrop_julian_days + (search_end - search_start)
 
 end function ac72_search_start_Temp
+
+integer function ac72_search_start_TempBelow(startsim_julian_days, startcrop_julian_days, crit_window, &
+                                        Temp_crit_tmax_below, Temp_crit_below_days, Temp_crit_below_occurrence, Tmax_record)
+
+    !
+    ! !DESCRIPTION:
+    !
+    !  This function finds the planting/sowing date based on an below-maximum temperature
+    !  criterion defined in the lis.config
+    !
+    !
+    !EOP
+
+    implicit none
+    ! Input parameters
+    integer, intent(in) :: startsim_julian_days, startcrop_julian_days, crit_window, &
+                           Temp_crit_days, Temp_crit_occurrence
+    integer, intent(in) :: Temp_crit_tmin
+    real, intent(in) :: Tmax_record(366)  ! Yearly max temperature data (1-366)
+
+    ! Local variables
+    integer :: search_start, search_end, t, i, occurrence_count
+    logical :: consecutive_met
+
+    ! Define search start and end indices
+    search_start = startcrop_julian_days - startsim_julian_days + 1
+    search_end = search_start + crit_window - 1
+
+    ! Initialize occurrence counter
+    occurrence_count = 0
+    t = search_start
+
+    ! Loop through the search window with non-overlapping windows
+    do while (t <= search_end - Temp_crit_below_days + 1)
+        consecutive_met = .true.
+
+        ! Check Tmin_record for Temp_crit_days consecutive days
+        do i = 0, Temp_crit_below_days - 1
+            if (Tmax_record(t + i) > Temp_crit_tmax_below) then
+                consecutive_met = .false.
+                exit
+            end if
+        end do
+
+        if (consecutive_met) then
+            occurrence_count = occurrence_count + 1
+            if (occurrence_count == Temp_crit_occurrence) then
+                ac72_search_start_Temp = startcrop_julian_days + (t + i - search_start)
+                return
+            end if
+            ! Move `t` to the end of the window
+            t = t + i
+        end if
+
+        ! Move to the next day
+        t = t + 1
+    end do
+
+    ! If condition is not met, return the last possible day
+    ac72_search_start_TempBelow = startcrop_julian_days + (search_end - search_start)
+
+end function ac72_search_start_TempBelow
 
 !BOP
   !
