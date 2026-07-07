@@ -137,7 +137,7 @@ subroutine AC72_readcrd()
   endif
 
   ! Temperature criterion (below threshold, e.g. winter sowing)
-  call ESMF_ConfigFindLabel(LIS_config, "AquaCrop.7.2 maximumtemperature criterion below for cropping start:", rc = rc)
+  call ESMF_ConfigFindLabel(LIS_config, "AquaCrop.7.2 maximum temperature criterion below for cropping start:", rc = rc)
   if (rc == 0) then
       do n=1, LIS_rc%nnest
          call ESMF_ConfigGetAttribute(LIS_config, AC72_struc(n)%Temp_crit_below, rc=rc)

@@ -368,6 +368,14 @@ integer function ac72_search_start_Temp(startsim_julian_days, startcrop_julian_d
 
 end function ac72_search_start_Temp
 
+!BOP
+  !
+  ! !ROUTINE: AC72_search_start_TempBelow
+  ! \label{AC72_search_start_TempBelow}
+  !
+  ! !REVISION HISTORY:
+  !  (7 JUL 2026, Martynas Bielinis; below-threshold/winter-sowing criterion)
+  !
 integer function ac72_search_start_TempBelow(startsim_julian_days, startcrop_julian_days, crit_window, &
                                         Temp_crit_tmax_below, Temp_crit_below_days, Temp_crit_below_occurrence, Tmax_record)
 
@@ -383,8 +391,8 @@ integer function ac72_search_start_TempBelow(startsim_julian_days, startcrop_jul
     implicit none
     ! Input parameters
     integer, intent(in) :: startsim_julian_days, startcrop_julian_days, crit_window, &
-                           Temp_crit_days, Temp_crit_occurrence
-    integer, intent(in) :: Temp_crit_tmin
+                           Temp_crit_below_days, Temp_crit_below_occurrence
+    integer, intent(in) :: Temp_crit_tmax_below
     real, intent(in) :: Tmax_record(366)  ! Yearly max temperature data (1-366)
 
     ! Local variables
@@ -413,7 +421,7 @@ integer function ac72_search_start_TempBelow(startsim_julian_days, startcrop_jul
 
         if (consecutive_met) then
             occurrence_count = occurrence_count + 1
-            if (occurrence_count == Temp_crit_occurrence) then
+            if (occurrence_count == Temp_crit_below_occurrence) then
                 ac72_search_start_Temp = startcrop_julian_days + (t + i - search_start)
                 return
             end if
