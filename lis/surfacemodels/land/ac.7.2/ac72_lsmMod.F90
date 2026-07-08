@@ -98,13 +98,13 @@ module AC72_lsmMod
   ! \item[crit_window]
   !   Length of search window in days (rainfall and/or criterion for sowing/planting)
   ! \item[Temp_crit_below]
-  !   Uses a below-maximum temperature criterion for sowing/planting
-  ! \item[Temp_crit_tmax_below]
-  !   Maximum temperature threshold (below-maximum temperature criterion for sowing/planting)
+  !   Uses a below-mean temperature criterion for sowing/planting
+  ! \item[Temp_crit_tmean_below]
+  !   Daily mean temperature threshold (below-mean temperature criterion for sowing/planting)
   ! \item[Temp_crit_below_days]
-  !   number of consecutive days (below-maximum temperature criterion for sowing/planting)
+  !   number of consecutive days (below-mean temperature criterion for sowing/planting)
   ! \item[Temp_crit_below_occurrence]
-  !   Number of occurrences (below-maximum temperature criterion for sowing/planting)
+  !   Number of occurrences (below-mean temperature criterion for sowing/planting)
 
   !
   ! !REVISION HISTORY:
@@ -204,7 +204,7 @@ module AC72_lsmMod
      integer            :: Rainfall_crit_occurrence
      integer            :: crit_window
      logical            :: Temp_crit_below
-     integer            :: Temp_crit_tmax_below
+     integer            :: Temp_crit_tmean_below
      integer            :: Temp_crit_below_days
      integer            :: Temp_crit_below_occurrence
      logical            :: QC_opt

@@ -374,10 +374,10 @@ end function ac72_search_start_Temp
   ! \label{AC72_search_start_TempBelow}
   !
   ! !REVISION HISTORY:
-  !  (7 JUL 2026, Martynas Bielinis; below-threshold/winter-sowing criterion)
+  !  (8 JUL 2026, Martynas Bielinis; below-threshold/winter-sowing criterion)
   !
 integer function ac72_search_start_TempBelow(startsim_julian_days, startcrop_julian_days, crit_window, &
-                                        Temp_crit_tmax_below, Temp_crit_below_days, Temp_crit_below_occurrence, Tmax_record)
+                                        Temp_crit_tmean_below, Temp_crit_below_days, Temp_crit_below_occurrence, Tmean_record)
 
     !
     ! !DESCRIPTION:
@@ -392,8 +392,8 @@ integer function ac72_search_start_TempBelow(startsim_julian_days, startcrop_jul
     ! Input parameters
     integer, intent(in) :: startsim_julian_days, startcrop_julian_days, crit_window, &
                            Temp_crit_below_days, Temp_crit_below_occurrence
-    integer, intent(in) :: Temp_crit_tmax_below
-    real, intent(in) :: Tmax_record(366)  ! Yearly max temperature data (1-366)
+    integer, intent(in) :: Temp_crit_tmean_below
+    real, intent(in) :: Tmean_record(366)  ! Yearly mean temperature data (1-366), i.e. (Tmax_record+Tmin_record)/2.
 
     ! Local variables
     integer :: search_start, search_end, t, i, occurrence_count
@@ -413,7 +413,7 @@ integer function ac72_search_start_TempBelow(startsim_julian_days, startcrop_jul
 
         ! Check Tmin_record for Temp_crit_days consecutive days
         do i = 0, Temp_crit_below_days - 1
-            if (Tmax_record(t + i) > Temp_crit_tmax_below) then
+            if (Tmean_record(t + i) > Temp_crit_tmean_below) then
                 consecutive_met = .false.
                 exit
             end if
@@ -422,7 +422,7 @@ integer function ac72_search_start_TempBelow(startsim_julian_days, startcrop_jul
         if (consecutive_met) then
             occurrence_count = occurrence_count + 1
             if (occurrence_count == Temp_crit_below_occurrence) then
-                ac72_search_start_Temp = startcrop_julian_days + (t + i - search_start)
+                ac72_search_start_TempBelow = startcrop_julian_days + (t + i - search_start)
                 return
             end if
             ! Move `t` to the end of the window

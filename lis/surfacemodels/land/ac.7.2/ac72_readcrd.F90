@@ -137,15 +137,15 @@ subroutine AC72_readcrd()
   endif
 
   ! Temperature criterion (below threshold, e.g. winter sowing)
-  call ESMF_ConfigFindLabel(LIS_config, "AquaCrop.7.2 maximum temperature criterion below for cropping start:", rc = rc)
+  call ESMF_ConfigFindLabel(LIS_config, "AquaCrop.7.2 temperature criterion below for cropping start:", rc = rc)
   if (rc == 0) then
       do n=1, LIS_rc%nnest
          call ESMF_ConfigGetAttribute(LIS_config, AC72_struc(n)%Temp_crit_below, rc=rc)
          if (AC72_struc(n)%Temp_crit_below) then
             write(LIS_logunit, *)'[INFO] AC72 temperature criterion (below) for cropping start'
-            call ESMF_ConfigFindLabel(LIS_config, "AquaCrop.7.2 temperature criterion Tmax below:", rc = rc)
-            call ESMF_ConfigGetAttribute(LIS_config, AC72_struc(n)%Temp_crit_tmax_below, rc=rc)
-            call LIS_verify(rc, "AquaCrop.7.2 temperature criterion Tmax below: not defined")
+            call ESMF_ConfigFindLabel(LIS_config, "AquaCrop.7.2 temperature criterion Tmean below:", rc = rc)
+            call ESMF_ConfigGetAttribute(LIS_config, AC72_struc(n)%Temp_crit_tmean_below, rc=rc)
+            call LIS_verify(rc, "AquaCrop.7.2 temperature criterion Tmean below: not defined")
             call ESMF_ConfigFindLabel(LIS_config, "AquaCrop.7.2 temperature criterion below consecutive days:", rc = rc)
             call ESMF_ConfigGetAttribute(LIS_config, AC72_struc(n)%Temp_crit_below_days, rc=rc)
             call LIS_verify(rc, "AquaCrop.7.2 temperature criterion below consecutive days: not defined")

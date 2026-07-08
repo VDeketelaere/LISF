@@ -995,8 +995,9 @@ subroutine AC72_main(n)
                      AC72_struc(n)%Crop_AnnualStartDay,0,0,0,time1julhours)
                time2days = (time1julhours - timerefjulhours)/24 + 1
                start_day_tb = ac72_search_start_TempBelow(time1days,time2days,AC72_struc(n)%crit_window, &
-                                                AC72_struc(n)%Temp_crit_tmax_below, AC72_struc(n)%Temp_crit_below_days, &
-                                                AC72_struc(n)%Temp_crit_below_occurrence, AC72_struc(n)%ac72(t)%Tmax_record)
+                                                AC72_struc(n)%Temp_crit_tmean_below, AC72_struc(n)%Temp_crit_below_days, &
+                                                AC72_struc(n)%Temp_crit_below_occurrence, &
+                                                (AC72_struc(n)%ac72(t)%Tmax_record + AC72_struc(n)%ac72(t)%Tmin_record)/2.)
                call set_project_input(AC72_struc(n)%irun, 'Crop_Day1', start_day_tb)
            endif
 
