@@ -985,7 +985,7 @@ subroutine AC72_main(n)
                      AC72_struc(n)%Sim_AnnualStartDay,0,0,0,time1julhours)
                time1days = (time1julhours - timerefjulhours)/24 + 1
                call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%ac72(t)%Crop_AnnualStartMonth, &
-                     AC72_struc(n)%Crop_AnnualStartDay,0,0,0,time1julhours)
+                     AC72_struc(n)%ac72(t)%Crop_AnnualStartDay,0,0,0,time1julhours)
                time2days = (time1julhours - timerefjulhours)/24 + 1
                start_day_t = ac72_search_start_Temp(time1days,time2days,AC72_struc(n)%crit_window, &
                                                 AC72_struc(n)%Temp_crit_tmin, AC72_struc(n)%Temp_crit_days, &
@@ -1001,7 +1001,7 @@ subroutine AC72_main(n)
                      AC72_struc(n)%Sim_AnnualStartDay,0,0,0,time1julhours)
                time1days = (time1julhours - timerefjulhours)/24 + 1
                call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%ac72(t)%Crop_AnnualStartMonth, &
-                     AC72_struc(n)%Crop_AnnualStartDay,0,0,0,time1julhours)
+                     AC72_struc(n)%ac72(t)%Crop_AnnualStartDay,0,0,0,time1julhours)
                time2days = (time1julhours - timerefjulhours)/24 + 1
                start_day_tb = ac72_search_start_TempBelow(time1days,time2days,AC72_struc(n)%crit_window, &
                                                 AC72_struc(n)%Temp_crit_tmean_below, AC72_struc(n)%Temp_crit_below_days, &
@@ -1018,7 +1018,7 @@ subroutine AC72_main(n)
                      AC72_struc(n)%Sim_AnnualStartDay,0,0,0,time1julhours)
                time1days = (time1julhours - timerefjulhours)/24 + 1
                call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%ac72(t)%Crop_AnnualStartMonth, &
-                     AC72_struc(n)%Crop_AnnualStartDay,0,0,0,time1julhours)
+                     AC72_struc(n)%ac72(t)%Crop_AnnualStartDay,0,0,0,time1julhours)
                time2days = (time1julhours - timerefjulhours)/24 + 1
                start_day_p = ac72_search_start_Rainfall(time1days,time2days,AC72_struc(n)%crit_window, &
                                                 AC72_struc(n)%Rainfall_crit_amount, AC72_struc(n)%Rainfall_crit_days, &
