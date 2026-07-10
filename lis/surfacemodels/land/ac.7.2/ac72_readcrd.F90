@@ -359,6 +359,8 @@ subroutine AC72_readcrd()
      AC72_struc(n)%LDT_ncvar_gdd_lengthflowering = 'GDD_lengthflowering'
      AC72_struc(n)%LDT_ncvar_cgc = 'CGC'
      AC72_struc(n)%LDT_ncvar_cdc = 'CDC'
+     AC72_struc(n)%LDT_ncvar_sowday = 'AC_SOWDAY'
+     AC72_struc(n)%LDT_ncvar_sowmonth = 'AC_SOWMONTH'
   enddo
 
   ! set default restart format to netcdf

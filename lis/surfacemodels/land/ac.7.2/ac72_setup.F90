@@ -803,6 +803,34 @@ subroutine AC72_setup()
             AC72_struc(n)%ac72(t)%GDDCDC = placeholder(col, row)
         enddo 
      endif
+
+   AC72_struc(n)%SowDateFromLDT = .false.
+   if ( LIS_param_has_var(n, trim(AC72_struc(n)%LDT_ncvar_sowday)) .and. &
+        LIS_param_has_var(n, trim(AC72_struc(n)%LDT_ncvar_sowmonth)) ) then
+
+      AC72_struc(n)%SowDateFromLDT = .true.
+
+      write(LIS_logunit,*) "AC72: reading parameter AC_SOWDAY from ", trim(LIS_rc%paramfile(n))
+      call LIS_read_param(n, trim(AC72_struc(n)%LDT_ncvar_sowday), placeholder)
+      do t = 1, LIS_rc%npatch(n, mtype)
+         col = LIS_surface(n, mtype)%tile(t)%col
+         row = LIS_surface(n, mtype)%tile(t)%row
+         AC72_struc(n)%ac72(t)%Crop_AnnualStartDay = placeholder(col, row)
+      enddo
+
+      write(LIS_logunit,*) "AC72: reading parameter AC_SOWMONTH from ", trim(LIS_rc%paramfile(n))
+      call LIS_read_param(n, trim(AC72_struc(n)%LDT_ncvar_sowmonth), placeholder)
+      do t = 1, LIS_rc%npatch(n, mtype)
+         col = LIS_surface(n, mtype)%tile(t)%col
+         row = LIS_surface(n, mtype)%tile(t)%row
+         AC72_struc(n)%ac72(t)%Crop_AnnualStartMonth = placeholder(col, row)
+      enddo
+   else
+      do t = 1, LIS_rc%npatch(n, mtype)
+         AC72_struc(n)%ac72(t)%Crop_AnnualStartDay = AC72_struc(n)%Crop_AnnualStartDay
+         AC72_struc(n)%ac72(t)%Crop_AnnualStartMonth = AC72_struc(n)%Crop_AnnualStartMonth
+      enddo
+   endif
    
      ! Louise B - 6 Jan 2026: we could make a look up table if we have a longer list of forcings?
 

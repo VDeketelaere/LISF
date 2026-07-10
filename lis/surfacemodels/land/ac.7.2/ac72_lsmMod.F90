@@ -145,6 +145,8 @@ module AC72_lsmMod
      character*128      :: LDT_ncvar_gdd_lengthflowering
      character*128      :: LDT_ncvar_cgc
      character*128      :: LDT_ncvar_cdc
+     character*128      :: LDT_ncvar_sowday
+     character*128      :: LDT_ncvar_sowmonth
 
      !-------------------------------------------------------------------------
      ! ts, Count, rstInterval, outInterval
@@ -211,6 +213,7 @@ module AC72_lsmMod
      type(AC72dec), pointer :: ac72(:)
 
      logical :: GDDfromLDT
+     logical :: SowDateFromLDT
 
   end type AC72_type_dec
 

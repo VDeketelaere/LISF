@@ -80,6 +80,8 @@ module AC72_module
      !-------------------------------------------------------------------------
      character(len=100) :: cropt
      integer            :: soiltype
+     integer            :: Crop_AnnualStartDay
+     integer            :: Crop_AnnualStartMonth
      !-------------------------------------------------------------------------
      ! multilevel spatial parameter
      !-------------------------------------------------------------------------

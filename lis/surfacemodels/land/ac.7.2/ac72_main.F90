@@ -966,6 +966,15 @@ subroutine AC72_main(n)
                   'Crop_Filename', &
                   trim(AC72_struc(n)%ac72(t)%cropt)//'.CRO')
 
+                  
+            if (AC72_struc(n)%SowDateFromLDT) then
+               call LIS_get_julhr(1901,1,1,0,0,0,timerefjulhours)
+               call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%ac72(t)%Crop_AnnualStartMonth, &
+                     AC72_struc(n)%ac72(t)%Crop_AnnualStartDay,0,0,0,time1julhours)
+               time1days = (time1julhours - timerefjulhours)/24 + 1
+               call set_project_input(AC72_struc(n)%irun, 'Crop_Day1', time1days)
+            endif
+
            ! Set sowing/planting date based on criterion if activated
            ! Set for first year, needs to be defined in main
            if (AC72_struc(n)%Temp_crit) then
@@ -975,7 +984,7 @@ subroutine AC72_main(n)
                call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%Sim_AnnualStartMonth, &
                      AC72_struc(n)%Sim_AnnualStartDay,0,0,0,time1julhours)
                time1days = (time1julhours - timerefjulhours)/24 + 1
-               call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%Crop_AnnualStartMonth, &
+               call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%ac72(t)%Crop_AnnualStartMonth, &
                      AC72_struc(n)%Crop_AnnualStartDay,0,0,0,time1julhours)
                time2days = (time1julhours - timerefjulhours)/24 + 1
                start_day_t = ac72_search_start_Temp(time1days,time2days,AC72_struc(n)%crit_window, &
@@ -991,7 +1000,7 @@ subroutine AC72_main(n)
                call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%Sim_AnnualStartMonth, &
                      AC72_struc(n)%Sim_AnnualStartDay,0,0,0,time1julhours)
                time1days = (time1julhours - timerefjulhours)/24 + 1
-               call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%Crop_AnnualStartMonth, &
+               call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%ac72(t)%Crop_AnnualStartMonth, &
                      AC72_struc(n)%Crop_AnnualStartDay,0,0,0,time1julhours)
                time2days = (time1julhours - timerefjulhours)/24 + 1
                start_day_tb = ac72_search_start_TempBelow(time1days,time2days,AC72_struc(n)%crit_window, &
@@ -1008,7 +1017,7 @@ subroutine AC72_main(n)
                call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%Sim_AnnualStartMonth, &
                      AC72_struc(n)%Sim_AnnualStartDay,0,0,0,time1julhours)
                time1days = (time1julhours - timerefjulhours)/24 + 1
-               call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%Crop_AnnualStartMonth, &
+               call LIS_get_julhr(LIS_rc%yr, AC72_struc(n)%ac72(t)%Crop_AnnualStartMonth, &
                      AC72_struc(n)%Crop_AnnualStartDay,0,0,0,time1julhours)
                time2days = (time1julhours - timerefjulhours)/24 + 1
                start_day_p = ac72_search_start_Rainfall(time1days,time2days,AC72_struc(n)%crit_window, &
