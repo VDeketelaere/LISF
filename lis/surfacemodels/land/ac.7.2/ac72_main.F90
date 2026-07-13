@@ -626,7 +626,7 @@ subroutine AC72_main(n)
       tmp_tmin = AC72_struc(n)%ac72(t)%tmin - LIS_CONST_TKFRZ
       
       ! ETo: use AgERA5 ETo directly (daily value)
-      tmp_eto = AC72_struc(n)%ac72(t)%eto
+      tmp_eto = AC72_struc(n)%ac72(t)%eto * 86400
       
       ! Minimal validity checks for vars actually used in AgERA5 path
       if (tmp_precip .eq. LIS_rc%udef) then
