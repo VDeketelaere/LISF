@@ -213,30 +213,10 @@ subroutine interp_agera5_var(n, kk, findex, var_index, varfield, convert_rate, a
      enddo
   enddo
 
-  write(LIS_logunit,*) "[DEBUG] interp_agera5_var: var_index=", var_index
-  write(LIS_logunit,*) "[DEBUG] interp_agera5_var: count of valid input (lb=true)=", count(lb)
-  write(LIS_logunit,*) "[DEBUG] interp_agera5_var: f(1)=", f(1)
-  write(LIS_logunit,*) "[DEBUG] interp_agera5_var: minval(f, lb)=", minval(f, lb)
-  write(LIS_logunit,*) "[DEBUG] interp_agera5_var: maxval(f, lb)=", maxval(f, lb)
 
   select case (trim(LIS_rc%met_interp(findex)))
 
   case ("bilinear")
-     write(LIS_logunit,*) "[DEBUG] interp: n111(1)=", agera5_struc(n)%n111(1)
-     write(LIS_logunit,*) "[DEBUG] interp: n121(1)=", agera5_struc(n)%n121(1)
-     write(LIS_logunit,*) "[DEBUG] interp: n211(1)=", agera5_struc(n)%n211(1)
-     write(LIS_logunit,*) "[DEBUG] interp: n221(1)=", agera5_struc(n)%n221(1)
-     write(LIS_logunit,*) "[DEBUG] interp: lb at n111(1)=", lb(agera5_struc(n)%n111(1))
-     write(LIS_logunit,*) "[DEBUG] interp: f at n111(1)=", f(agera5_struc(n)%n111(1))
-     write(LIS_logunit,*) "[DEBUG] interp: lb at n121(1)=", lb(agera5_struc(n)%n121(1))
-     write(LIS_logunit,*) "[DEBUG] interp: f at n121(1)=", f(agera5_struc(n)%n121(1))
-     write(LIS_logunit,*) "[DEBUG] interp: lb at n211(1)=", lb(agera5_struc(n)%n211(1))
-     write(LIS_logunit,*) "[DEBUG] interp: f at n211(1)=", f(agera5_struc(n)%n211(1))
-     write(LIS_logunit,*) "[DEBUG] interp: lb at n221(1)=", lb(agera5_struc(n)%n221(1))
-     write(LIS_logunit,*) "[DEBUG] interp: f at n221(1)=", f(agera5_struc(n)%n221(1))
-     write(LIS_logunit,*) "[DEBUG] interp: size(LIS_domain%lat)=", size(LIS_domain(n)%lat)
-     write(LIS_logunit,*) "[DEBUG] interp: size(lo)=", size(lo)
-     write(LIS_logunit,*) "[DEBUG] interp: size(varfield_out)=", size(varfield_out)
      
      call bilinear_interp(LIS_rc%gridDesc(n,:), lb, f, lo, varfield_out, &
           agera5_struc(n)%mi, LIS_rc%lnc(n)*LIS_rc%lnr(n), &    ! FIXED: Use full grid size
@@ -269,13 +249,6 @@ subroutine interp_agera5_var(n, kk, findex, var_index, varfield, convert_rate, a
      call LIS_endrun()
 
   end select
-
-  write(LIS_logunit,*) "[DEBUG] interp_agera5_var: count of valid output (lo=true)=", count(lo)
-  write(LIS_logunit,*) "[DEBUG] interp_agera5_var: varfield_out(1)=", varfield_out(1)
-  if (count(lo) > 0) then
-     write(LIS_logunit,*) "[DEBUG] interp_agera5_var: minval(varfield_out, lo)=", minval(varfield_out, lo)
-     write(LIS_logunit,*) "[DEBUG] interp_agera5_var: maxval(varfield_out, lo)=", maxval(varfield_out, lo)
-  endif
 
   ! Store in 3D array with correct indexing
   ! ageraforc dimensions: (nvars, 1, lnc*lnr)
