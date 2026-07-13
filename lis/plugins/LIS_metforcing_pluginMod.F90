@@ -847,7 +847,7 @@ subroutine LIS_metforcing_plugin
 #endif
 
 #if ( defined MF_AgERA5)
-! - ERA5 Reanalysis Forcing:
+! - AgERA5 Reanalysis Forcing:
    call registerinitmetforc(trim(LIS_agera5Id)//char(0),init_agera5)
    call registerretrievemetforc(trim(LIS_agera5Id)//char(0),get_agera5)
    call registertimeinterpmetforc(trim(LIS_agera5Id)//char(0), &
