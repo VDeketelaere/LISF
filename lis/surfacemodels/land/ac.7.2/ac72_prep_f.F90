@@ -171,6 +171,7 @@ contains
 
     ! Save current LIS_rc
     LIS_rc_saved = LIS_rc
+
     ! Save full forcing perturbation state
     allocate(forcPert_saved(LIS_rc%nforcepert))
     do k = 1, LIS_rc%nforcepert
@@ -189,18 +190,17 @@ contains
 
     allocate(daily_tmax_arr(LIS_rc%npatch(n,LIS_rc%lsm_index),366))
     allocate(daily_tmin_arr(LIS_rc%npatch(n,LIS_rc%lsm_index),366))
+    daily_tmax_arr = 0
+    daily_tmin_arr = 0
+
+    if (AC72_struc(n)%Rainfall_crit) then
+        allocate(daily_pcp_arr(LIS_rc%npatch(n,LIS_rc%lsm_index),366))
+        daily_pcp_arr = 0
+    endif
 
     if (.not. using_agera5) then
       met_ts = int(86400./LIS_rc%ts)
       allocate(subdaily_arr(LIS_rc%npatch(n,LIS_rc%lsm_index),met_ts))
-      daily_tmax_arr = 0
-      daily_tmin_arr = 0
-    
-
-        if (AC72_struc(n)%Rainfall_crit) then
-            allocate(daily_pcp_arr(LIS_rc%npatch(n,LIS_rc%lsm_index),366))
-            daily_pcp_arr = 0
-        endif
     endif
 
     ! Set LIS_rc time to beginning of simulation period (in case of restart)
@@ -235,6 +235,9 @@ contains
             ! *** KEY FIX: Direct access to metdata1 with gindex ***
             daily_tmin_arr(t,i) = agera5_struc(n)%metdata1(1, 3, gindex)  ! Tmin [K]
             daily_tmax_arr(t,i) = agera5_struc(n)%metdata1(1, 4, gindex)  ! Tmax [K]
+            if (AC72_struc(n)%Rainfall_crit) then
+               daily_pcp_arr(t,i) = agera5_struc(n)%metdata1(1, 1, gindex)
+            endif
          enddo
             
          call LIS_advance_timestep(LIS_rc)
