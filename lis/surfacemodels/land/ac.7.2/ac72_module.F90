@@ -226,6 +226,7 @@ module AC72_module
      real :: ScorAT1, ScorAT2, HItimesAT1, HItimesAT2, HItimesAT
      real :: alfaHI, alfaHIAdj
      real :: WPi
+     real :: Brel
      integer(int32) :: NextSimFromDayNr
 
      !! Evaluation

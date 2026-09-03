@@ -95,6 +95,7 @@ use ac_global, only:    AdjustSizeCompartments, &
                         GetEToRecord_DataType, &
                         GetEToRecord_FromDayNr, &
                         GetManagement_FertilityStress, &
+                        SetManagement_FertilityStress, &
                         GetGroundWaterFile, &
                         GetGroundWaterFileFull, &
                         GetInfiltrated, &
@@ -6607,7 +6608,7 @@ subroutine WriteEvaluationData(DAP)
 end subroutine WriteEvaluationData
 
 
-subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_range,ens_n_local,nensem)
+subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_range,ens_n_local,nensem,Brel_local)
     !! Part1 (before reading the climate) of the run initialization
     !! Loads the run input from the project file
     !! Initializes parameters and states
@@ -6619,11 +6620,13 @@ subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_
     real, intent(in), optional    :: CCx_range
     integer, intent(in), optional :: ens_n_local
     integer, intent(in), optional :: nensem
+    real, intent(in), optional    :: Brel_local
 
     real                          :: CCx_temp
     logical                       :: CCx_pert_flag
     real                          :: GDD_endgrowth_temp
     real                          :: CCi_final_temp
+    integer(int32)                :: FertStress_local
     type(rep_sum) :: SumWaBal_temp, PreviousSum_temp
 
     if (TheProjectType == typeproject_typenone) then
@@ -6632,6 +6635,22 @@ subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_
     end if
 
     call LoadSimulationRunProject(int(NrRun, kind=int32))
+
+    if (present(Brel_local)) then
+        FertStress_local = roundc(100._sp * (1._sp - Brel_local), mold=1_int32)
+        if (FertStress_local < 0_int32) then
+            FertStress_local = 0_int32
+        elseif (FertStress_local > 100_int32) then
+            FertStress_local = 100_int32
+        endif
+        call SetManagement_FertilityStress(FertStress_local)
+        write(*,*) 'BREL DEBUG: Brel=', Brel_local, &
+                   ' SF_applied=', FertStress_local, &
+                   ' Calibrated=', GetCrop_StressResponse_Calibrated()
+    else
+        write(*,*) 'BREL DEBUG: Brel_local ABSENT, SF from .MAN=', &
+                   GetManagement_FertilityStress()
+    endif
 
     ! Variable CCx ! needed for perturbation of CCx
     ! NL and LB July 2025
@@ -6672,6 +6691,8 @@ subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_
     call ResetPreviousSum(PreviousSum_temp)
     call SetPreviousSum(PreviousSum_temp)
     call InitializeSimulationRunPart1()
+    write(*,*) 'BREL DEBUG: after init, SF=', GetManagement_FertilityStress(), &
+               ' FracBiomassPotSF=', GetFracBiomassPotSF()
 
     contains
 

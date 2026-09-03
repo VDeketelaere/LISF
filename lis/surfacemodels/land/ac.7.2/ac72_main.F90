@@ -1124,13 +1124,26 @@ subroutine AC72_main(n)
             ! End variable CCx
 
              ! InitializeRunPart
-             if (AC72_struc(n)%variable_CCx .and. (LIS_rc%nensem(n) .gt. 2)) then
-               call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
-                  AC72_struc(n)%variable_CCx,CCx_temp,CCx_range_temp,ens_n,LIS_rc%nensem(n))
+            write(*,*) 'BREL DEBUG: main call site, use_brel=', AC72_struc(n)%use_brel, ' n=', n
+            if (AC72_struc(n)%variable_CCx .and. (LIS_rc%nensem(n) .gt. 2)) then
+               if (AC72_struc(n)%use_brel) then
+                  call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
+                     AC72_struc(n)%variable_CCx,CCx_temp,CCx_range_temp,ens_n,LIS_rc%nensem(n),&
+                     Brel_local=AC72_struc(n)%ac72(t)%Brel)
+               else
+                  call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
+                     AC72_struc(n)%variable_CCx,CCx_temp,CCx_range_temp,ens_n,LIS_rc%nensem(n))
+               endif
             else
-               call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
-               AC72_struc(n)%variable_CCx)
+               if (AC72_struc(n)%use_brel) then
+                  call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
+                     AC72_struc(n)%variable_CCx,Brel_local=AC72_struc(n)%ac72(t)%Brel)
+               else
+                  call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
+                     AC72_struc(n)%variable_CCx)
+               endif
             endif
+            
              call InitializeSimulationRunPart2()
              AC72_struc(n)%ac72(t)%HarvestNow = .false. ! Initialize to false
              ! Check if enough GDDays to complete cycle
