@@ -3919,6 +3919,7 @@ subroutine RelationshipsForFertilityAndSaltStress()
     real(sp) :: Coeffb1Salt_temp
     real(sp) :: Coeffb2Salt_temp
     real(sp) :: X10, X20, X30, X40, X50, X60, X70, X80, X90
+    real(sp) :: BM80_temp, BM90_temp, BM100_temp
     integer(int8) :: BioTop, BioLow
     real(sp) :: StrTop, StrLow
 
@@ -3955,9 +3956,11 @@ subroutine RelationshipsForFertilityAndSaltStress()
                                   GetCrop_Day1(), GetCrop_DeterminancyLinked(), &
                                   GetCrop_StressResponse(),GetCrop_subkind(), &
                                   GetCrop_ModeCycle(), Coeffb0_temp, Coeffb1_temp, &
-                                  Coeffb2_temp, X10, X20, X30, X40, X50, X60, X70, &
+                                  Coeffb2_temp, X10, X20, X30, X40, X50, X60, X70, BM80_temp, BM90_temp, BM100_temp, &
                                   GetCrop_GDDaysToFlowering(), GetCrop_GDDLengthFlowering(), &
                                   GetCrop_GDDaysToHIo(), GetCrop_Planting(), GetCrop_DaysToHIo())
+                                  write(*,*) 'BREL DEBUG: calib BM10..BM100 =', X10, X20, X30, X40, X50, X60, X70, &
+           BM80_temp, BM90_temp, BM100_temp
         call SetCoeffb0(Coeffb0_temp)
         call SetCoeffb1(Coeffb1_temp)
         call SetCoeffb2(Coeffb2_temp)

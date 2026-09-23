@@ -585,6 +585,7 @@ subroutine DetermineBiomassAndYield(dayi, ETo, TminOnDay, TmaxOnDay, CO2i, &
     real(sp), intent(inout) :: CCw
     real(sp), intent(inout) :: Trw
     integer(int32), intent(inout) :: StressSFadjNEW
+    integer(int32), parameter :: SFadj_max = 99
     integer(int32), intent(inout) :: PreviousStressLevel
     logical, intent(inout) :: StoreAssimilates
     logical, intent(inout) :: MobilizeAssimilates
@@ -984,12 +985,12 @@ subroutine DetermineBiomassAndYield(dayi, ETo, TminOnDay, TmaxOnDay, CO2i, &
             StressSFadjNEW = 0
         else
             if (BioAdj <= epsilon(1._sp)) then
-                StressSFadjNEW = 80
+                StressSFadjNEW = SFadj_max
             else
                 if ((Coeffb0 + Coeffb1*BioAdj + Coeffb2*BioAdj*BioAdj) < 0) then
                     StressSFadjNEW = GetManagement_FertilityStress()
-                elseif ((Coeffb0 + Coeffb1*BioAdj + Coeffb2*BioAdj*BioAdj) > 80) then
-                    StressSFadjNEW = 80
+                elseif ((Coeffb0 + Coeffb1*BioAdj + Coeffb2*BioAdj*BioAdj) > SFadj_max) then
+                    StressSFadjNEW = SFadj_max
                 else
                     StressSFadjNEW = roundc(Coeffb0 + Coeffb1*BioAdj + Coeffb2*BioAdj*BioAdj, &
                                             mold=1_int8)

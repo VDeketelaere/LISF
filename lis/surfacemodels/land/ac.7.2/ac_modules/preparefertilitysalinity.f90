@@ -297,7 +297,7 @@ subroutine StressBiomassRelationshipForTnxReference(TheDaysToCCini, TheGDDaysToC
             Tbase, Tupper, TDayMin, TDayMax, GDtranspLow, WPveg, RatedHIdt,&
             CO2TnxReferenceYear, RefCropDay1, CropDeterm, CropSResp, TheCropType,&
             TheModeCycle, b0, b1, b2, &
-            BM10, BM20, BM30, BM40, BM50, BM60, BM70)
+            BM10, BM20, BM30, BM40, BM50, BM60, BM70, BM80, BM90, BM100)
     integer(int32), intent(in) :: TheDaysToCCini
     integer(int32), intent(in) :: TheGDDaysToCCini
     integer(int32), intent(in) :: L0
@@ -344,6 +344,9 @@ subroutine StressBiomassRelationshipForTnxReference(TheDaysToCCini, TheGDDaysToC
     real(sp), intent(inout) :: BM50
     real(sp), intent(inout) :: BM60
     real(sp), intent(inout) :: BM70
+    real(sp), intent(inout) :: BM80
+    real(sp), intent(inout) :: BM90
+    real(sp), intent(inout) :: BM100
 
     type StressIndexes
         integer(int32) :: StressProc
@@ -354,7 +357,7 @@ subroutine StressBiomassRelationshipForTnxReference(TheDaysToCCini, TheGDDaysToC
             !! Undocumented
     end type StressIndexes
 
-    type(StressIndexes), dimension(8) :: StressMatrix
+    type(StressIndexes), dimension(11) :: StressMatrix
     integer(int8) :: Si
     integer(int32) :: L12SF, GDDL12SF
     type(rep_EffectStress) :: StressResponse
@@ -391,7 +394,7 @@ subroutine StressBiomassRelationshipForTnxReference(TheDaysToCCini, TheGDDaysToC
     end if
 
     ! 2. Biomass production for various stress levels
-    do Si = 1, 8
+    do Si = 1, 11
         ! various stress levels
         ! stress effect
         SiPr = int(10*(Si-1), kind=int32)
@@ -416,6 +419,15 @@ subroutine StressBiomassRelationshipForTnxReference(TheDaysToCCini, TheGDDaysToC
             if ((TheModeCycle == modeCycle_GDDays) .and. (GDDL12SF < GDDL123)) then
                 RatDGDD = (L123-L12SF)*1._sp/(GDDL123-GDDL12SF)
             end if
+        end if
+        if (Si == 1) then
+            write(*,*) 'BREL DEBUG inputs: WPveg=', WPveg, &
+                       ' WPyield=', WPyield, &
+                       ' CO2ref=', CO2TnxReferenceYear, &
+                       ' CCx=', CCx, ' CGC=', CGC, ' KcTop=', KcTop
+            write(*,*) 'BREL DEBUG phenology: L0=', L0, ' L12=', L12, &
+                       ' L123=', L123, ' L1234=', L1234, ' LFlor=', LFlor, &
+                       ' KcDeclAgeing=', KcDeclAgeing
         end if
         ! biomass production
         BNor = Bnormalized(TheDaysToCCini, TheGDDaysToCCini,&
@@ -443,26 +455,28 @@ subroutine StressBiomassRelationshipForTnxReference(TheDaysToCCini, TheGDDaysToC
              StressMatrix(Si)%BioMProc
         ! end stress level
     end do
+    write(*,*) 'BREL DEBUG: BNor100=', BNor100, &
+            ' BioMProc=', (StressMatrix(Si)%BioMProc, Si=1,11)
 
     ! 5. Stress - Biomass relationship
     Yavg = 0._sp
     X1avg = 0._sp
     X2avg = 0._sp
-    do Si = 1, 8
+    do Si = 1, 11
         ! various stress levels
         Yavg = Yavg + StressMatrix(Si)%StressProc
         X1avg = X1avg + StressMatrix(Si)%BioMProc
         X2avg = X2avg + StressMatrix(Si)%BioMSquare
     end do
-    Yavg  = Yavg/8._sp
-    X1avg = X1avg/8._sp
-    X2avg = X2avg/8._sp
+    Yavg  = Yavg/11._sp
+    X1avg = X1avg/11._sp
+    X2avg = X2avg/11._sp
     SUMx1y  = 0._sp
     SUMx2y  = 0._sp
     SUMx1Sq = 0._sp
     SUMx2Sq = 0._sp
     SUMx1x2 = 0._sp
-    do Si = 1, 8
+    do Si = 1, 11
         ! various stress levels
         y     = StressMatrix(Si)%StressProc - Yavg
         x1    = StressMatrix(Si)%BioMProc - X1avg
@@ -479,6 +493,7 @@ subroutine StressBiomassRelationshipForTnxReference(TheDaysToCCini, TheGDDaysToC
         SUMx1x2 = SUMx1x2 + x1x2
     end do
 
+    write(*,*) 'BREL DEBUG: SUMx1x2=', SUMx1x2, ' Yavg=', Yavg, ' X1avg=', X1avg
     if (abs(roundc(SUMx1x2*1000._sp, mold=1)) /= 0) then
         b2 = (SUMx1y - (SUMx2y * SUMx1Sq)/SUMx1x2)/&
              (SUMx1x2 - (SUMx1Sq * SUMx2Sq)/SUMx1x2)
@@ -492,6 +507,9 @@ subroutine StressBiomassRelationshipForTnxReference(TheDaysToCCini, TheGDDaysToC
         BM50 =  StressMatrix(6)%BioMProc
         BM60 =  StressMatrix(7)%BioMProc
         BM70 =  StressMatrix(8)%BioMProc
+        BM80 =  StressMatrix(9)%BioMProc
+        BM90 =  StressMatrix(10)%BioMProc
+        BM100 =  StressMatrix(11)%BioMProc
     else
         b2 = real(undef_int, kind=sp)
         b1 = real(undef_int, kind=sp)
@@ -731,7 +749,7 @@ subroutine ReferenceStressBiomassRelationship(TheDaysToCCini, &
         Tbase, Tupper, TDayMin, TDayMax, GDtranspLow, WPveg, RatedHIdt, &
         CropDNr1, CropDeterm, CropSResp, TheCropType, &
         TheModeCycle, b0, b1, b2, &
-        BM10, BM20, BM30, BM40, BM50, BM60, BM70, &
+        BM10, BM20, BM30, BM40, BM50, BM60, BM70, BM80, BM90, BM100, &
         GDDFlor, GDDLengthFlor, GDDHImax, ThePlanting, LHImax)
     integer(int32), intent(in) :: TheDaysToCCini
     integer(int32), intent(in) :: TheGDDaysToCCini
@@ -778,6 +796,9 @@ subroutine ReferenceStressBiomassRelationship(TheDaysToCCini, &
     real(sp), intent(inout) :: BM50
     real(sp), intent(inout) :: BM60
     real(sp), intent(inout) :: BM70
+    real(sp), intent(inout) :: BM80
+    real(sp), intent(inout) :: BM90
+    real(sp), intent(inout) :: BM100
     integer(int32), intent(in) :: GDDFlor
     integer(int32), intent(in) :: GDDLengthFlor
     integer(int32), intent(in) :: GDDHImax
@@ -856,7 +877,7 @@ subroutine ReferenceStressBiomassRelationship(TheDaysToCCini, &
     TheCropType,&
     TheModeCycle,&
     b0, b1, b2,&
-    BM10, BM20, BM30, BM40, BM50, BM60, BM70)
+    BM10, BM20, BM30, BM40, BM50, BM60, BM70, BM80, BM90, BM100)
 end subroutine ReferenceStressBiomassRelationship
 
 
