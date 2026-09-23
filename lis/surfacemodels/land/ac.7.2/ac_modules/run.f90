@@ -3959,8 +3959,7 @@ subroutine RelationshipsForFertilityAndSaltStress()
                                   Coeffb2_temp, X10, X20, X30, X40, X50, X60, X70, BM80_temp, BM90_temp, BM100_temp, &
                                   GetCrop_GDDaysToFlowering(), GetCrop_GDDLengthFlowering(), &
                                   GetCrop_GDDaysToHIo(), GetCrop_Planting(), GetCrop_DaysToHIo())
-                                  write(*,*) 'BREL DEBUG: calib BM10..BM100 =', X10, X20, X30, X40, X50, X60, X70, &
-           BM80_temp, BM90_temp, BM100_temp
+
         call SetCoeffb0(Coeffb0_temp)
         call SetCoeffb1(Coeffb1_temp)
         call SetCoeffb2(Coeffb2_temp)
@@ -6647,12 +6646,6 @@ subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_
             FertStress_local = 100_int32
         endif
         call SetManagement_FertilityStress(FertStress_local)
-        write(*,*) 'BREL DEBUG: Brel=', Brel_local, &
-                   ' SF_applied=', FertStress_local, &
-                   ' Calibrated=', GetCrop_StressResponse_Calibrated()
-    else
-        write(*,*) 'BREL DEBUG: Brel_local ABSENT, SF from .MAN=', &
-                   GetManagement_FertilityStress()
     endif
 
     ! Variable CCx ! needed for perturbation of CCx
@@ -6694,8 +6687,7 @@ subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_
     call ResetPreviousSum(PreviousSum_temp)
     call SetPreviousSum(PreviousSum_temp)
     call InitializeSimulationRunPart1()
-    write(*,*) 'BREL DEBUG: after init, SF=', GetManagement_FertilityStress(), &
-               ' FracBiomassPotSF=', GetFracBiomassPotSF()
+
 
     contains
 

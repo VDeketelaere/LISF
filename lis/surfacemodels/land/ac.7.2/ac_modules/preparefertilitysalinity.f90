@@ -420,15 +420,7 @@ subroutine StressBiomassRelationshipForTnxReference(TheDaysToCCini, TheGDDaysToC
                 RatDGDD = (L123-L12SF)*1._sp/(GDDL123-GDDL12SF)
             end if
         end if
-        if (Si == 1) then
-            write(*,*) 'BREL DEBUG inputs: WPveg=', WPveg, &
-                       ' WPyield=', WPyield, &
-                       ' CO2ref=', CO2TnxReferenceYear, &
-                       ' CCx=', CCx, ' CGC=', CGC, ' KcTop=', KcTop
-            write(*,*) 'BREL DEBUG phenology: L0=', L0, ' L12=', L12, &
-                       ' L123=', L123, ' L1234=', L1234, ' LFlor=', LFlor, &
-                       ' KcDeclAgeing=', KcDeclAgeing
-        end if
+
         ! biomass production
         BNor = Bnormalized(TheDaysToCCini, TheGDDaysToCCini,&
                 L0, L12, L12SF, L123, L1234, LFlor,&
@@ -455,8 +447,6 @@ subroutine StressBiomassRelationshipForTnxReference(TheDaysToCCini, TheGDDaysToC
              StressMatrix(Si)%BioMProc
         ! end stress level
     end do
-    write(*,*) 'BREL DEBUG: BNor100=', BNor100, &
-            ' BioMProc=', (StressMatrix(Si)%BioMProc, Si=1,11)
 
     ! 5. Stress - Biomass relationship
     Yavg = 0._sp
@@ -493,7 +483,6 @@ subroutine StressBiomassRelationshipForTnxReference(TheDaysToCCini, TheGDDaysToC
         SUMx1x2 = SUMx1x2 + x1x2
     end do
 
-    write(*,*) 'BREL DEBUG: SUMx1x2=', SUMx1x2, ' Yavg=', Yavg, ' X1avg=', X1avg
     if (abs(roundc(SUMx1x2*1000._sp, mold=1)) /= 0) then
         b2 = (SUMx1y - (SUMx2y * SUMx1Sq)/SUMx1x2)/&
              (SUMx1x2 - (SUMx1Sq * SUMx2Sq)/SUMx1x2)
