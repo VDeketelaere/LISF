@@ -22,6 +22,9 @@ subroutine AC72_main(n)
 !!! MB_AC70    
   use ac_utils, only: roundc
   use ac_global, only:     DegreesDay,&
+       GetKsPolH_out,&
+       GetKsPolC_out,&
+       GetKsAer_out,&
        CanopyCoverNoStressSF,&
        CCiNoWaterStressSF,&
        GetSimulation_EffectStress_CDecline,&
@@ -536,6 +539,7 @@ subroutine AC72_main(n)
   real                 :: CCx_range_temp
   real                 :: GDD_endgrowth_temp
   real                 :: CCi_final_temp
+  real                 :: tmp_StSto
   integer              :: ens_n
 
   real                 :: tmp_pres, tmp_precip, tmp_tmax, tmp_tmin   ! Weather Forcing
@@ -1374,6 +1378,9 @@ subroutine AC72_main(n)
          AC72_struc(n)%ac72(t)%Tact = GetTact()
          AC72_struc(n)%ac72(t)%Tpot = GetTpot()
          AC72_struc(n)%ac72(t)%TactWeedInfested = GetTactWeedInfested()
+         AC72_struc(n)%ac72(t)%KsPolH_out = GetKsPolH_out()
+         AC72_struc(n)%ac72(t)%KsPolC_out = GetKsPolC_out()
+         AC72_struc(n)%ac72(t)%KsAer_out = GetKsAer_out()
          AC72_struc(n)%ac72(t)%tmax = GetTmax()
          AC72_struc(n)%ac72(t)%tmin =GetTmin()
 
@@ -1538,6 +1545,56 @@ subroutine AC72_main(n)
              vlevel=1, unit="-", direction="-", surface_type = LIS_rc%lsm_index)
         ![ 24] output variable: CCxAdjusted (unit=-).  *** initial canopy cover in water stress conditions
         call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_CCxAdjusted, value = AC72_struc(n)%ac72(t)%Crop%CCxAdjusted, &
+             vlevel=1, unit="-", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 25] output variable: BiomassPot (unit=t/ha).  *** potential (unstressed) cumulative biomass
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_BiomassPot, value = AC72_struc(n)%ac72(t)%SumWaBal%BiomassPot, &
+             vlevel=1, unit="t ha-1", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 26] output variable: Tpot (unit=mm).  *** potential (unstressed) plant transpiration
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_Tpot, value = AC72_struc(n)%ac72(t)%SumWaBal%Tpot, &
+             vlevel=1, unit="mm", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 27] output variable: Runoff (unit=mm).  *** surface runoff
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_Runoff, value = AC72_struc(n)%ac72(t)%SumWaBal%Runoff, &
+             vlevel=1, unit="mm", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 28] output variable: Drain (unit=mm).  *** deep drainage below the root zone
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_Drain, value = AC72_struc(n)%ac72(t)%SumWaBal%Drain, &
+             vlevel=1, unit="mm", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 29] output variable: SumGDD (unit=degC-day).  *** cumulative growing degree days since sowing
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_SumGDD, value = AC72_struc(n)%ac72(t)%SumGDD, &
+             vlevel=1, unit="degC-d", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 30] output variable: SowingDayNr (unit=-).  *** AquaCrop internal day-number of sowing/planting (Crop.Day1)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_SowingDayNr, value = real(AC72_struc(n)%ac72(t)%crop%Day1), &
+             vlevel=1, unit="-", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 31] output variable: HIfinal (unit=%).  *** reference HI adjusted for insufficient green canopy (not actual HI)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_HIfinal, value = real(AC72_struc(n)%ac72(t)%Simulation%HIfinal), &
+             vlevel=1, unit="%", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 32] output variable: DayAnaero (unit=d).  *** consecutive days with anaerobic root zone (capped at DelayLowOxygen)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_DayAnaero, value = real(AC72_struc(n)%ac72(t)%Simulation%DayAnaero), &
+             vlevel=1, unit="d", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 33] output variable: RootZoneWC_SAT (unit=mm).  *** root zone water content at saturation
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_RootZoneWC_SAT, value = AC72_struc(n)%ac72(t)%RootZoneWC_SAT, &
+             vlevel=1, unit="mm", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 34] output variable: FertilityStress (unit=%).  *** soil fertility stress level applied
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_FertilityStress, value = real(AC72_struc(n)%ac72(t)%Management%FertilityStress), &
+             vlevel=1, unit="%", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 35] output variable: SumGDDfromDay1 (unit=degC-day).  *** cumulative growing degree days since sowing (Crop.Day1)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_SumGDDfromDay1, value = AC72_struc(n)%ac72(t)%Simulation%SumGDDfromDay1, &
+             vlevel=1, unit="degC-d", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 36] output variable: StSto (unit=%).  *** stomatal closure stress, 100*(1-Tact/Tpot) as in AquaCrop daily output
+        if (AC72_struc(n)%ac72(t)%Tpot > epsilon(0.)) then
+           tmp_StSto = 100. * (1. - AC72_struc(n)%ac72(t)%Tact / AC72_struc(n)%ac72(t)%Tpot)
+        else
+           tmp_StSto = LIS_rc%udef
+        endif
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_StSto, value = tmp_StSto, &
+             vlevel=1, unit="%", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 37] output variable: KsPolH (unit=-).  *** pollination heat stress coefficient (1 = no stress)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_KsPolH, value = AC72_struc(n)%ac72(t)%KsPolH_out, &
+             vlevel=1, unit="-", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 38] output variable: KsPolC (unit=-).  *** pollination cold stress coefficient (1 = no stress)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_KsPolC, value = AC72_struc(n)%ac72(t)%KsPolC_out, &
+             vlevel=1, unit="-", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 39] output variable: KsAer (unit=-).  *** root-zone aeration stress coefficient (1 = no stress)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_KsAer, value = AC72_struc(n)%ac72(t)%KsAer_out, &
              vlevel=1, unit="-", direction="-", surface_type = LIS_rc%lsm_index)
 
         !  Reset forcings

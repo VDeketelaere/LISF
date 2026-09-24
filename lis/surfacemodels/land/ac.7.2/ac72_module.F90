@@ -190,6 +190,9 @@ module AC72_module
      real :: Tact
      real :: Tpot
      real :: TactWeedInfested
+     real :: KsPolH_out
+     real :: KsPolC_out
+     real :: KsAer_out
 
      ! variables from run.f90
      type(rep_GwTable) :: GwTable

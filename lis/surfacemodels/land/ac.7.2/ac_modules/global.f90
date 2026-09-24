@@ -1084,8 +1084,41 @@ type(SoilLayerIndividual), dimension(max_SoilLayers) :: soillayer
 type(rep_DayEventInt), dimension(5) :: IrriBeforeSeason
 type(rep_DayEventInt), dimension(5) :: IrriAfterSeason
 
+! LIS output diagnostics: daily stress coefficients (1 = no stress)
+real(sp) :: KsPolH_out = 1._sp
+real(sp) :: KsPolC_out = 1._sp
+real(sp) :: KsAer_out = 1._sp
+
 
 contains
+
+
+real(sp) function GetKsPolH_out()
+    GetKsPolH_out = KsPolH_out
+end function GetKsPolH_out
+
+subroutine SetKsPolH_out(val)
+    real(sp), intent(in) :: val
+    KsPolH_out = val
+end subroutine SetKsPolH_out
+
+real(sp) function GetKsPolC_out()
+    GetKsPolC_out = KsPolC_out
+end function GetKsPolC_out
+
+subroutine SetKsPolC_out(val)
+    real(sp), intent(in) :: val
+    KsPolC_out = val
+end subroutine SetKsPolC_out
+
+real(sp) function GetKsAer_out()
+    GetKsAer_out = KsAer_out
+end function GetKsAer_out
+
+subroutine SetKsAer_out(val)
+    real(sp), intent(in) :: val
+    KsAer_out = val
+end subroutine SetKsAer_out
 
 
 real(sp) function DeduceAquaCropVersion(FullNameXXFile)

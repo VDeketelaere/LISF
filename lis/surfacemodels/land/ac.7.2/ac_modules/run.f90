@@ -5,6 +5,9 @@ use ac_climprocessing, only:    GetDecadeEToDataset, &
                                 GetMonthlyEToDataset, &
                                 GetMonthlyRainDataset
 use ac_global, only:    AdjustSizeCompartments, &
+                        SetKsPolH_out, &
+                        SetKsPolC_out, &
+                        SetKsAer_out, &
                         AdjustClimRecordTo, &
                         ac_zero_threshold, &
                         GetClimateFile, &
@@ -6852,6 +6855,11 @@ subroutine AdvanceOneTimeStep(WPi, HarvestNow)
                 HItimesAT2_temp, HItimesAT_temp, alfaHI_temp, &
                 alfaHIAdj_temp, TESTVAL
     logical :: WaterTableInProfile_temp, NoMoreCrop_temp
+
+    ! reset daily LIS output stress diagnostics (1 = no stress)
+    call SetKsPolH_out(1._sp)
+    call SetKsPolC_out(1._sp)
+    call SetKsAer_out(1._sp)
 
     ! 1. Get ETo
     if (GetEToFile() == '(None)') then
