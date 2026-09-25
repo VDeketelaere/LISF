@@ -5,6 +5,9 @@ use ac_climprocessing, only:    GetDecadeEToDataset, &
                                 GetMonthlyEToDataset, &
                                 GetMonthlyRainDataset
 use ac_global, only:    AdjustSizeCompartments, &
+                        SetKsPolH_out, &
+                        SetKsPolC_out, &
+                        SetKsAer_out, &
                         AdjustClimRecordTo, &
                         ac_zero_threshold, &
                         GetClimateFile, &
@@ -95,6 +98,7 @@ use ac_global, only:    AdjustSizeCompartments, &
                         GetEToRecord_DataType, &
                         GetEToRecord_FromDayNr, &
                         GetManagement_FertilityStress, &
+                        SetManagement_FertilityStress, &
                         GetGroundWaterFile, &
                         GetGroundWaterFileFull, &
                         GetInfiltrated, &
@@ -3951,6 +3955,7 @@ subroutine RelationshipsForFertilityAndSaltStress()
     real(sp) :: Coeffb1Salt_temp
     real(sp) :: Coeffb2Salt_temp
     real(sp) :: X10, X20, X30, X40, X50, X60, X70, X80, X90
+    real(sp) :: BM80_temp, BM90_temp, BM100_temp
     integer(int8) :: BioTop, BioLow
     real(sp) :: StrTop, StrLow
 
@@ -3987,9 +3992,10 @@ subroutine RelationshipsForFertilityAndSaltStress()
                                   GetCrop_Day1(), GetCrop_DeterminancyLinked(), &
                                   GetCrop_StressResponse(),GetCrop_subkind(), &
                                   GetCrop_ModeCycle(), Coeffb0_temp, Coeffb1_temp, &
-                                  Coeffb2_temp, X10, X20, X30, X40, X50, X60, X70, &
+                                  Coeffb2_temp, X10, X20, X30, X40, X50, X60, X70, BM80_temp, BM90_temp, BM100_temp, &
                                   GetCrop_GDDaysToFlowering(), GetCrop_GDDLengthFlowering(), &
                                   GetCrop_GDDaysToHIo(), GetCrop_Planting(), GetCrop_DaysToHIo())
+
         call SetCoeffb0(Coeffb0_temp)
         call SetCoeffb1(Coeffb1_temp)
         call SetCoeffb2(Coeffb2_temp)
@@ -6755,7 +6761,7 @@ subroutine WriteEvaluationData(DAP)
 end subroutine WriteEvaluationData
 
 
-subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_range,ens_n_local,nensem)
+subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_range,ens_n_local,nensem,Brel_local)
     !! Part1 (before reading the climate) of the run initialization
     !! Loads the run input from the project file
     !! Initializes parameters and states
@@ -6767,11 +6773,13 @@ subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_
     real, intent(in), optional    :: CCx_range
     integer, intent(in), optional :: ens_n_local
     integer, intent(in), optional :: nensem
+    real, intent(in), optional    :: Brel_local
 
     real                          :: CCx_temp
     logical                       :: CCx_pert_flag
     real                          :: GDD_endgrowth_temp
     real                          :: CCi_final_temp
+    integer(int32)                :: FertStress_local
     type(rep_sum) :: SumWaBal_temp, PreviousSum_temp
 
     if (TheProjectType == typeproject_typenone) then
@@ -6780,6 +6788,16 @@ subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_
     end if
 
     call LoadSimulationRunProject(int(NrRun, kind=int32))
+
+    if (present(Brel_local)) then
+        FertStress_local = roundc(100._sp * (1._sp - Brel_local), mold=1_int32)
+        if (FertStress_local < 0_int32) then
+            FertStress_local = 0_int32
+        elseif (FertStress_local > 100_int32) then
+            FertStress_local = 100_int32
+        endif
+        call SetManagement_FertilityStress(FertStress_local)
+    endif
 
     ! Variable CCx ! needed for perturbation of CCx
     ! NL and LB July 2025
@@ -6820,6 +6838,7 @@ subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_
     call ResetPreviousSum(PreviousSum_temp)
     call SetPreviousSum(PreviousSum_temp)
     call InitializeSimulationRunPart1()
+
 
     contains
 
@@ -6985,6 +7004,11 @@ subroutine AdvanceOneTimeStep(WPi, HarvestNow)
                 alfaHIAdj_temp, TESTVAL
     real(sp) :: RootingDepth_temp
     logical :: WaterTableInProfile_temp, NoMoreCrop_temp
+
+    ! reset daily LIS output stress diagnostics (1 = no stress)
+    call SetKsPolH_out(1._sp)
+    call SetKsPolC_out(1._sp)
+    call SetKsAer_out(1._sp)
 
     ! 1. Get ETo
     if (GetEToFile() == '(None)') then

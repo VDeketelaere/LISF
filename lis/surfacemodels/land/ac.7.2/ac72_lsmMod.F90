@@ -147,6 +147,8 @@ module AC72_lsmMod
      character*128      :: LDT_ncvar_cdc
      character*128      :: LDT_ncvar_sowday
      character*128      :: LDT_ncvar_sowmonth
+     character*128      :: LDT_ncvar_brel
+     logical            :: use_brel
 
      !-------------------------------------------------------------------------
      ! ts, Count, rstInterval, outInterval

@@ -20,15 +20,17 @@ subroutine AC72_f2t(n)
   use AC72_lsmMod
   use ESMF
   use LIS_constantsMod, only: LIS_CONST_G, LIS_CONST_TKFRZ
-  use LIS_coreMod, only       : LIS_rc, LIS_surface
+  use LIS_coreMod, only       : LIS_rc, LIS_surface, LIS_config
   use LIS_FORC_AttributesMod
   use LIS_logMod, only        : LIS_verify
   use LIS_metforcingMod, only : LIS_FORC_State
-
+  use agera5_forcingMod, only : agera5_struc
   implicit none
 
   ! !ARGUMENTS:
   integer, intent(in) :: n
+  integer             :: rc
+  logical             :: isAgERA5
   !
   ! !DESCRIPTION:
   !  This routine transfers the LIS provided forcing into the AC72
@@ -89,158 +91,215 @@ subroutine AC72_f2t(n)
   type(ESMF_Field)  :: snowField
   real, pointer     :: snowf(:)
 
+    ! Fields and Pointers for AgERA5 forcing 
+  type(ESMF_Field)  :: tminField 
+  real, pointer     :: tmin(:)
 
-!!! GET FORCING FIELDS FROM LIS
-  ! get near surface air temperature
-  call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Tair%varname(1)), tmpField, rc=status)
-  call LIS_verify(status, "AC72_f2t: error getting Tair")
+  type(ESMF_Field)  :: tmaxField
+  real, pointer     :: tmax(:)
 
-  call ESMF_FieldGet(tmpField, localDE = 0, farrayPtr = tmp, rc = status)
-  call LIS_verify(status, "AC72_f2t: error retrieving Tair")
+  type(ESMF_Field)  :: etoField
+  real, pointer     :: eto(:)
 
-  ! get near surface specific humidity
-  call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Qair%varname(1)), q2Field, rc=status)
-  call LIS_verify(status, "AC72_f2t: error getting Qair")
+  ! Declare logical to check if AgERA5 is used and check
 
-  call ESMF_FieldGet(q2Field, localDE = 0, farrayPtr = q2, rc = status)
-  call LIS_verify(status, "AC72_f2t: error retrieving Qair")
+  isAgERA5 = .false.
+  call ESMF_ConfigFindLabel(LIS_config, "AgERA5 forcing directory:", rc = rc)
+  if (rc == ESMF_SUCCESS) then
+      isAgERA5 = .true.
+   endif
 
-  ! get incident shortwave radiation
-  call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_SWdown%varname(1)), swdField, rc=status)
-  call LIS_verify(status, "AC72_f2t: error getting Swdown")
-
-  call ESMF_FieldGet(swdField, localDE = 0, farrayPtr = swd, rc = status)
-  call LIS_verify(status, "AC72_f2t: error retrieving Swdown")
-
-  ! get eastward wind
-  call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Wind_E%varname(1)), uField, rc=status)
-  call LIS_verify(status, "AC72_f2t: error getting Wind_E")
-
-  call ESMF_FieldGet(uField, localDE = 0, farrayPtr = uwind, rc = status)
-  call LIS_verify(status, "AC72_f2t: error retrieving Wind_E")
-
-  ! get northward wind
-  call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Wind_N%varname(1)), vField, rc=status)
-  call LIS_verify(status, "AC72_f2t: error getting Wind_N")
-
-  call ESMF_FieldGet(vField, localDE = 0, farrayPtr = vwind, rc = status)
-  call LIS_verify(status, "AC72_f2t: error retrieving Wind_N")
-
-  ! get surface pressure
-  call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Psurf%varname(1)), psurfField, rc=status)
-  call LIS_verify(status, "AC72_f2t: error getting Psurf")
-
-  call ESMF_FieldGet(psurfField, localDE = 0, farrayPtr = psurf, rc = status)
-  call LIS_verify(status, "AC72_f2t: error retrieving Psurf")
-
-  ! get rainfall rate
-  call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Rainf%varname(1)), pcpField, rc=status)
-  call LIS_verify(status, "AC72_f2t: error getting Rainf")
-
-  call ESMF_FieldGet(pcpField, localDE = 0, farrayPtr = pcp, rc = status)
-  call LIS_verify(status, "AC72_f2t: error retrieving Rainf")
-
-  ! get snowfall rate
-  if(LIS_Forc_Snowf%selectOpt .eq. 1) then 
-     call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Snowf%varname(1)), snowField, rc=status)
-     call LIS_verify(status, "AC72_f2t: error getting Snowf")
-
-     call ESMF_FieldGet(snowField, localDE = 0, farrayPtr = snowf, rc = status)
-     call LIS_verify(status, "AC72_f2t: error retrieving Snowf")
-  endif
-
-!!! set the forcing counter
-  AC72_struc(n)%forc_count = AC72_struc(n)%forc_count + 1
-
-!!! pass forcing data to tiles
-  do t=1, LIS_rc%npatch(n, LIS_rc%lsm_index)
-     tid = LIS_surface(n, LIS_rc%lsm_index)%tile(t)%tile_id
-
-     ! lapse-rate correction to bring T to a 2m height
-     ! Copied from lapse-rate correction of met forcings assuming lapse
-     ! rate of 6.5 degC/km       
-     force_tmp = tmp(tid)
-     force_hum = q2(tid)
-     force_prs = psurf(tid)
-
-     elevdiff = 2 - AC72_struc(n)%forchgt_tq
-     tcforce=force_tmp+(lapse*elevdiff)
-     tbar=(force_tmp+tcforce)/2.
-     pcforce=force_prs/(exp((LIS_CONST_G*elevdiff)/(rdry*tbar)))
-     if (force_hum .eq. 0) force_hum=1e-08
-     ee=(force_hum*force_prs)/0.622               
-     esat=611.2*(exp((17.67*(force_tmp-LIS_CONST_TKFRZ))/&
-           ((force_tmp-LIS_CONST_TKFRZ)+243.5)))
-     qsat=(0.622*esat)/(force_prs-(0.378*esat))
-     rh=(force_hum/qsat)*100.
-     fesat=611.2*(exp((17.67*(tcforce-LIS_CONST_TKFRZ))/ &
-           ((tcforce-LIS_CONST_TKFRZ)+243.5)))
-     fqsat=(0.622*fesat)/(pcforce-(0.378*fesat))
-     hcforce=(rh*fqsat)/100.
-
-     tmp(tid)   = tcforce
-     q2(tid)    = hcforce
-     psurf(tid) = pcforce
-
-     ! TAIR
-     AC72_struc(n)%ac72(t)%tair = AC72_struc(n)%ac72(t)%tair + tmp(tid)
-
-     if (AC72_struc(n)%forc_count.eq.1) then !First iteration set max/min 
-        AC72_struc(n)%ac72(t)%tmax = tmp(tid)
-        AC72_struc(n)%ac72(t)%tmin = tmp(tid)
-     else
-        if (tmp(tid).gt.AC72_struc(n)%ac72(t)%tmax) then
-           AC72_struc(n)%ac72(t)%tmax=tmp(tid) !Replace maximum temperature
+  if (isAgERA5) then
+     ! For AgERA5, read directly from agera5_struc%metdata1
+     ! metdata1 dimensions: (1, nvars, ngrid)
+     ! Variables: 1=Rainf, 2=ETo, 3=Tmin, 4=Tmax
+     
+     do t=1, LIS_rc%npatch(n, LIS_rc%lsm_index)
+        tid = LIS_surface(n, LIS_rc%lsm_index)%tile(t)%tile_id
+        
+        ! precipitation
+        if (agera5_struc(n)%metdata1(1,1,tid) .ne. LIS_rc%udef) then
+           AC72_struc(n)%ac72(t)%prcp = agera5_struc(n)%metdata1(1,1,tid)
+        else
+           AC72_struc(n)%ac72(t)%prcp = 0.0
         endif
-        if (tmp(tid).lt.AC72_struc(n)%ac72(t)%tmin) then
-           AC72_struc(n)%ac72(t)%tmin=tmp(tid) !Replace minimum temperature
+        
+        ! ETo
+        if (agera5_struc(n)%metdata1(1,2,tid) .ne. LIS_rc%udef) then
+           AC72_struc(n)%ac72(t)%eto = agera5_struc(n)%metdata1(1,2,tid) 
+        else
+           AC72_struc(n)%ac72(t)%eto = 0.0
         endif
-     endif
-
-     ! SWDOWN
-     AC72_struc(n)%ac72(t)%swdown = AC72_struc(n)%ac72(t)%swdown + swd(tid)
-
-     ! Calculate Magnitude of Wind Speed (m/s)
-     wind_tmp = SQRT(uwind(tid)**2 + vwind(tid)**2)
-
-     ! Correct to 2 m if provided at another height
-     wind_tmp = wind_tmp * (4.87/LOG(67.8*AC72_struc(n)%forchgt_uv-5.42))
-
-     AC72_struc(n)%ac72(t)%wndspd = AC72_struc(n)%ac72(t)%wndspd + wind_tmp
-
-     ! PSURF
-     AC72_struc(n)%ac72(t)%psurf = AC72_struc(n)%ac72(t)%psurf + psurf(tid)
-
-     ! RAINF
-     if(pcp(tid).ne.LIS_rc%udef) then
-        AC72_struc(n)%ac72(t)%prcp = AC72_struc(n)%ac72(t)%prcp + pcp(tid)
-     endif
-
-     ! SNOWF
-     ! If there is snowf add it to precipitation.  AC72 does not use
-     ! separate rainf and snowf.
-     if(LIS_Forc_Snowf%selectOpt .eq. 1) then 
-        if(snowf(tid).ne.LIS_rc%udef) then
-           AC72_struc(n)%ac72(t)%prcp = AC72_struc(n)%ac72(t)%prcp + snowf(tid)
+        
+        ! Tmin
+        if (agera5_struc(n)%metdata1(1,3,tid) .ne. LIS_rc%udef) then
+           AC72_struc(n)%ac72(t)%tmin = agera5_struc(n)%metdata1(1,3,tid)
+        else
+           AC72_struc(n)%ac72(t)%tmin = LIS_rc%udef
         endif
-     endif
+        
+        ! Tmax
+        if (agera5_struc(n)%metdata1(1,4,tid) .ne. LIS_rc%udef) then
+           AC72_struc(n)%ac72(t)%tmax = agera5_struc(n)%metdata1(1,4,tid)
+        else
+           AC72_struc(n)%ac72(t)%tmax = LIS_rc%udef
+        endif
+     enddo
+   else
 
-     ! Calculate Dewpoint
+      !!! GET FORCING FIELDS FROM LIS
+      ! get near surface air temperature
+      call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Tair%varname(1)), tmpField, rc=status)
+      call LIS_verify(status, "AC72_f2t: error getting Tair")
 
-     ! Following A First Course in Atmospheric Thermodynamics, assume
-     ! approximation q = epsilon*e/p
+      call ESMF_FieldGet(tmpField, localDE = 0, farrayPtr = tmp, rc = status)
+      call LIS_verify(status, "AC72_f2t: error retrieving Tair")
 
-     ! Calculate vapor pressure
-     ee = (q2(tid)*psurf(tid))/0.622
+      ! get near surface specific humidity
+      call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Qair%varname(1)), q2Field, rc=status)
+      call LIS_verify(status, "AC72_f2t: error getting Qair")
 
-     ! Invert Bolton 1980 formula for saturation vapor pressure to calculate Td
-     ! since es(Td) = e
+      call ESMF_FieldGet(q2Field, localDE = 0, farrayPtr = q2, rc = status)
+      call LIS_verify(status, "AC72_f2t: error retrieving Qair")
 
-     val = log(ee/611.2)
-     td = (243.5 * val) / (17.67 - val) ! Dewpoint in C
-     td = td + LIS_CONST_TKFRZ
-     AC72_struc(n)%ac72(t)%tdew = AC72_struc(n)%ac72(t)%tdew + td 
+      ! get incident shortwave radiation
+      call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_SWdown%varname(1)), swdField, rc=status)
+      call LIS_verify(status, "AC72_f2t: error getting Swdown")
 
-  enddo
+      call ESMF_FieldGet(swdField, localDE = 0, farrayPtr = swd, rc = status)
+      call LIS_verify(status, "AC72_f2t: error retrieving Swdown")
+
+      ! get eastward wind
+      call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Wind_E%varname(1)), uField, rc=status)
+      call LIS_verify(status, "AC72_f2t: error getting Wind_E")
+
+      call ESMF_FieldGet(uField, localDE = 0, farrayPtr = uwind, rc = status)
+      call LIS_verify(status, "AC72_f2t: error retrieving Wind_E")
+
+      ! get northward wind
+      call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Wind_N%varname(1)), vField, rc=status)
+      call LIS_verify(status, "AC72_f2t: error getting Wind_N")
+
+      call ESMF_FieldGet(vField, localDE = 0, farrayPtr = vwind, rc = status)
+      call LIS_verify(status, "AC72_f2t: error retrieving Wind_N")
+
+      ! get surface pressure
+      call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Psurf%varname(1)), psurfField, rc=status)
+      call LIS_verify(status, "AC72_f2t: error getting Psurf")
+
+      call ESMF_FieldGet(psurfField, localDE = 0, farrayPtr = psurf, rc = status)
+      call LIS_verify(status, "AC72_f2t: error retrieving Psurf")
+
+      ! get rainfall rate
+      call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Rainf%varname(1)), pcpField, rc=status)
+      call LIS_verify(status, "AC72_f2t: error getting Rainf")
+
+      call ESMF_FieldGet(pcpField, localDE = 0, farrayPtr = pcp, rc = status)
+      call LIS_verify(status, "AC72_f2t: error retrieving Rainf")
+
+      ! get snowfall rate
+      if(LIS_Forc_Snowf%selectOpt .eq. 1) then 
+         call ESMF_StateGet(LIS_FORC_State(n), trim(LIS_FORC_Snowf%varname(1)), snowField, rc=status)
+         call LIS_verify(status, "AC72_f2t: error getting Snowf")
+
+         call ESMF_FieldGet(snowField, localDE = 0, farrayPtr = snowf, rc = status)
+         call LIS_verify(status, "AC72_f2t: error retrieving Snowf")
+      endif
+   
+
+      !!! set the forcing counter
+      AC72_struc(n)%forc_count = AC72_struc(n)%forc_count + 1
+
+      !!! pass forcing data to tiles
+      do t=1, LIS_rc%npatch(n, LIS_rc%lsm_index)
+         tid = LIS_surface(n, LIS_rc%lsm_index)%tile(t)%tile_id
+
+         ! lapse-rate correction to bring T to a 2m height
+         ! Copied from lapse-rate correction of met forcings assuming lapse
+         ! rate of 6.5 degC/km       
+         force_tmp = tmp(tid)
+         force_hum = q2(tid)
+         force_prs = psurf(tid)
+
+         elevdiff = 2 - AC72_struc(n)%forchgt_tq
+         tcforce=force_tmp+(lapse*elevdiff)
+         tbar=(force_tmp+tcforce)/2.
+         pcforce=force_prs/(exp((LIS_CONST_G*elevdiff)/(rdry*tbar)))
+         if (force_hum .eq. 0) force_hum=1e-08
+         ee=(force_hum*force_prs)/0.622               
+         esat=611.2*(exp((17.67*(force_tmp-LIS_CONST_TKFRZ))/&
+               ((force_tmp-LIS_CONST_TKFRZ)+243.5)))
+         qsat=(0.622*esat)/(force_prs-(0.378*esat))
+         rh=(force_hum/qsat)*100.
+         fesat=611.2*(exp((17.67*(tcforce-LIS_CONST_TKFRZ))/ &
+               ((tcforce-LIS_CONST_TKFRZ)+243.5)))
+         fqsat=(0.622*fesat)/(pcforce-(0.378*fesat))
+         hcforce=(rh*fqsat)/100.
+
+         tmp(tid)   = tcforce
+         q2(tid)    = hcforce
+         psurf(tid) = pcforce
+
+         ! TAIR
+         AC72_struc(n)%ac72(t)%tair = AC72_struc(n)%ac72(t)%tair + tmp(tid)
+
+         if (AC72_struc(n)%forc_count.eq.1) then !First iteration set max/min 
+            AC72_struc(n)%ac72(t)%tmax = tmp(tid)
+            AC72_struc(n)%ac72(t)%tmin = tmp(tid)
+         else
+            if (tmp(tid).gt.AC72_struc(n)%ac72(t)%tmax) then
+               AC72_struc(n)%ac72(t)%tmax=tmp(tid) !Replace maximum temperature
+            endif
+            if (tmp(tid).lt.AC72_struc(n)%ac72(t)%tmin) then
+               AC72_struc(n)%ac72(t)%tmin=tmp(tid) !Replace minimum temperature
+            endif
+         endif
+
+         ! SWDOWN
+         AC72_struc(n)%ac72(t)%swdown = AC72_struc(n)%ac72(t)%swdown + swd(tid)
+
+         ! Calculate Magnitude of Wind Speed (m/s)
+         wind_tmp = SQRT(uwind(tid)**2 + vwind(tid)**2)
+
+         ! Correct to 2 m if provided at another height
+         wind_tmp = wind_tmp * (4.87/LOG(67.8*AC72_struc(n)%forchgt_uv-5.42))
+
+         AC72_struc(n)%ac72(t)%wndspd = AC72_struc(n)%ac72(t)%wndspd + wind_tmp
+
+         ! PSURF
+         AC72_struc(n)%ac72(t)%psurf = AC72_struc(n)%ac72(t)%psurf + psurf(tid)
+
+         ! RAINF
+         if(pcp(tid).ne.LIS_rc%udef) then
+            AC72_struc(n)%ac72(t)%prcp = AC72_struc(n)%ac72(t)%prcp + pcp(tid)
+         endif
+
+         ! SNOWF
+         ! If there is snowf add it to precipitation.  AC72 does not use
+         ! separate rainf and snowf.
+         if(LIS_Forc_Snowf%selectOpt .eq. 1) then 
+            if(snowf(tid).ne.LIS_rc%udef) then
+               AC72_struc(n)%ac72(t)%prcp = AC72_struc(n)%ac72(t)%prcp + snowf(tid)
+            endif
+         endif
+
+         ! Calculate Dewpoint
+
+         ! Following A First Course in Atmospheric Thermodynamics, assume
+         ! approximation q = epsilon*e/p
+
+         ! Calculate vapor pressure
+         ee = (q2(tid)*psurf(tid))/0.622
+
+         ! Invert Bolton 1980 formula for saturation vapor pressure to calculate Td
+         ! since es(Td) = e
+
+         val = log(ee/611.2)
+         td = (243.5 * val) / (17.67 - val) ! Dewpoint in C
+         td = td + LIS_CONST_TKFRZ
+         AC72_struc(n)%ac72(t)%tdew = AC72_struc(n)%ac72(t)%tdew + td 
+
+      enddo
+   endif 
 
 end subroutine AC72_f2t

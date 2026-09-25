@@ -26,6 +26,8 @@ subroutine read_AC_Tclim(n, m, array)
        LDT_releaseUnitNumber, LDT_endrun
   use LDT_paramDataMod, only: LDT_LSMparam_struc
   use LDT_metforcingParmsMod, only: LDT_force_struc
+  use LDT_coreMod, only       : LDT_rc, LDT_config
+  use ESMF
 
   implicit none
 
@@ -33,6 +35,8 @@ subroutine read_AC_Tclim(n, m, array)
   integer,    intent(in) :: n
   integer,    intent(in) :: m
   real,    intent(inout) :: array(LDT_rc%lnc(n),LDT_rc%lnr(n))
+  integer             :: rc
+  logical             :: isAgERA5
 
   ! !DESCRIPTION:
   !  This subroutine retrieves the temperature climatology for the
@@ -126,20 +130,42 @@ subroutine read_AC_Tclim(n, m, array)
   !     AGGREGATING FINE-SCALE GRIDS TO COARSER LIS OUTPUT GRID
   ! -------------------------------------------------------------------
 
-  !- Set parameter grid array inputs:
-  param_gridDesc(:)  = 0.
+  isAgERA5 = .false.
+  call ESMF_ConfigFindLabel(LDT_config, "AgERA5 forcing directory:", rc = rc)
+  if (rc == ESMF_SUCCESS) then
+      isAgERA5 = .true.
+  endif
 
-  param_gridDesc(1)  = 0.    ! Latlon
-  param_gridDesc(2)  = float(ncols)
-  param_gridDesc(3)  = float(nrows)
-  param_gridDesc(4)  = yllcorner
-  param_gridDesc(5)  = xllcorner
-  param_gridDesc(6)  = 128
-  param_gridDesc(7)  = yllcorner + (nrows-1)*cellysize
-  param_gridDesc(8)  = xllcorner + (ncols-1)*cellxsize
-  param_gridDesc(9)  = cellxsize
-  param_gridDesc(10) = cellysize
-  param_gridDesc(20) = 0.
+  !- Set parameter grid array inputs:
+  if (.not. isAgERA5) then
+      param_gridDesc(:)  = 0.
+
+      param_gridDesc(1)  = 0.    ! Latlon
+      param_gridDesc(2)  = float(ncols)
+      param_gridDesc(3)  = float(nrows)
+      param_gridDesc(4)  = yllcorner
+      param_gridDesc(5)  = xllcorner
+      param_gridDesc(6)  = 128
+      param_gridDesc(7)  = yllcorner + (nrows-1)*cellysize
+      param_gridDesc(8)  = xllcorner + (ncols-1)*cellxsize
+      param_gridDesc(9)  = cellxsize
+      param_gridDesc(10) = cellysize
+      param_gridDesc(20) = 0.
+   else
+      param_gridDesc(:)  = 0.
+
+      param_gridDesc(1)  = 0.    ! Latlon
+      param_gridDesc(2)  = float(ncols)
+      param_gridDesc(3)  = float(nrows)
+      param_gridDesc(4)  = 89.95
+      param_gridDesc(5)  = xllcorner
+      param_gridDesc(6)  = 128
+      param_gridDesc(7)  = -89.95 
+      param_gridDesc(8)  = xllcorner + (ncols-1)*cellxsize
+      param_gridDesc(9)  = cellxsize
+      param_gridDesc(10) = cellysize
+      param_gridDesc(20) = 0.
+   endif      
 
   mi = ncols * nrows
   mo = LDT_rc%lnc(n)*LDT_rc%lnr(n)

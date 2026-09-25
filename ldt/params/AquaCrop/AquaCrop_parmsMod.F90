@@ -46,6 +46,7 @@ module AquaCrop_parmsMod
      type(LDT_paramEntry) :: comp_size ! compartment size
      type(LDT_paramEntry), allocatable :: tmin_cli(:) ! tmin climatology
      type(LDT_paramEntry), allocatable :: tmax_cli(:) ! tmax climatology
+     type(LDT_paramEntry) :: brel    ! spatially varying relative biomass (Brel = 1 - SF)
      integer :: nlayers !  number of soil layers
      real :: lthickness(5) ! thickness of layers, max 5 layers for AC
      integer :: max_comp ! fixed to 12
@@ -53,6 +54,9 @@ module AquaCrop_parmsMod
      character(len=LDT_CONST_PATH_LEN), allocatable :: tempclimdir(:)
      character(len=LDT_CONST_PATH_LEN), allocatable :: tempclimfile(:)
      character(125), allocatable :: tempclim_gridtransform(:)
+     character(len=LDT_CONST_PATH_LEN) :: brelfile
+     character(125) :: brel_gridtransform
+     logical :: use_brel
   end type aquacrop_type_dec
 
   type(aquacrop_type_dec), allocatable :: AquaCrop_struc(:)
@@ -93,6 +97,7 @@ contains
     external :: read_CONSTANT_AC_crop
     external :: define_AC_compartments
     external :: read_AC_Tclim
+    external :: read_AC_Brel
 
     character*3 :: months(12)
     data months /'jan','feb','mar','apr','may','jun','jul','aug', &
@@ -135,6 +140,34 @@ contains
             LDT_rc%lnc(n),LDT_rc%lnr(n),&
             Aquacrop_struc(n)%comp_size%vlevels))
        call define_AC_compartments(n, AquaCrop_struc(n)%comp_size%value(:,:,:))
+       ! Optional: spatially varying Brel (relative biomass; Brel = 1 - SF).
+       ! Absent config label => Brel is not processed and AC_Brel is not written,
+       ! so AquaCrop falls back to the constant SF from the .MAN file.
+       call ESMF_ConfigFindLabel(LDT_config,"AquaCrop Brel map file:",rc=rc)
+       if (rc == 0) then
+          AquaCrop_struc(n)%use_brel = .true.
+          call ESMF_ConfigGetAttribute(LDT_config,AquaCrop_struc(n)%brelfile,rc=rc)
+          call LDT_verify(rc,"AquaCrop Brel map file: not defined")
+
+          call ESMF_ConfigFindLabel(LDT_config,"AquaCrop Brel spatial transform:",rc=rc)
+          call ESMF_ConfigGetAttribute(LDT_config,AquaCrop_struc(n)%brel_gridtransform,rc=rc)
+          call LDT_verify(rc,"AquaCrop Brel spatial transform: not defined")
+
+          call set_param_attribs(Aquacrop_struc(n)%brel, "AC_Brel",&
+               units="-", &
+               full_name="Aquacrop spatially varying relative biomass (Brel = 1 - SF)")
+          allocate(Aquacrop_struc(n)%brel%value(&
+               LDT_rc%lnc(n),LDT_rc%lnr(n),&
+               Aquacrop_struc(n)%brel%vlevels))
+
+          call read_AC_Brel(n, AquaCrop_struc(n)%brel%value(:,:,1))
+          write(LDT_logunit,*) "[INFO] AquaCrop spatially varying Brel turned ON"
+       else
+          AquaCrop_struc(n)%use_brel = .false.
+          write(LDT_logunit,*) "[INFO] AquaCrop Brel map file: not defined, "//&
+               "using constant soil fertility stress from the management file"
+       endif
+       ! End Brel
 
 
        !! Read temperature climatology file
@@ -236,6 +269,12 @@ contains
     call LDT_writeNETCDFdataHeader(n,ftn,ndimID,&
          Aquacrop_struc(n)%comp_size)
 
+     if (AquaCrop_struc(n)%use_brel) then
+       ndimID(1) = dimID(1)
+       ndimID(2) = dimID(2)
+       call LDT_writeNETCDFdataHeader(n,ftn,dimID,&
+            Aquacrop_struc(n)%brel)
+    endif
     ndimID(3) = monthID
     do m = 1, LDT_rc%nmetforc
       call LDT_writeNETCDFdataHeader(n,ftn,ndimID,&
@@ -276,6 +315,9 @@ contains
 
     call LDT_writeNETCDFdata(n,ftn,AquaCrop_struc(n)%cropt)
     call LDT_writeNETCDFdata(n,ftn,AquaCrop_struc(n)%comp_size)
+    if (AquaCrop_struc(n)%use_brel) then
+       call LDT_writeNETCDFdata(n,ftn,AquaCrop_struc(n)%brel)
+    endif
 
     do m = 1, LDT_rc%nmetforc
       call LDT_writeNETCDFdata(n,ftn,AquaCrop_struc(n)%tmin_cli(m))

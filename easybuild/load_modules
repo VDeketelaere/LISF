@@ -7,12 +7,30 @@ load_module() {
     fi
 }
 
-load_module Python/3.11.5-GCCcore-13.2.0
-load_module Perl/5.38.0-GCCcore-13.2.0
-load_module HDF5/1.14.3-iimpi-2023b
-load_module netCDF/4.9.2-iimpi-2023b
-load_module ecCodes/2.31.0-iimpi-2023b
-load_module ESMF/8.6.1-intel-2023b
+TOOLCHAIN=${1:-}
+if [ -z "$TOOLCHAIN" ]; then
+    read -r -p "Please enter the toolchain (2023b, 2025b, default: 2025b): " TOOLCHAIN
+    TOOLCHAIN="${TOOLCHAIN:-2025b}"
+fi
+
+if [[ "$TOOLCHAIN" == "2023b" ]]; then
+    load_module Python/3.11.5-GCCcore-13.2.0
+    load_module Perl/5.38.0-GCCcore-13.2.0
+    load_module HDF5/1.14.3-iimpi-2023b
+    load_module netCDF/4.9.2-iimpi-2023b
+    load_module ecCodes/2.31.0-iimpi-2023b
+    load_module ESMF/8.6.1-intel-2023b
+elif [[ "$TOOLCHAIN" == "2025b" ]]; then
+    load_module Python/3.13.5-GCCcore-14.3.0
+    load_module Perl/5.40.2-GCCcore-14.3.0
+    load_module HDF5/1.14.6-iimpi-2025b
+    load_module netCDF/4.9.3-iimpi-2025b
+    load_module ecCodes/2.43.0-iimpi-2025b
+    load_module ESMF/8.9.0-intel-2025b
+else
+    echo "Toolchain ${TOOLCHAIN} not supported"; exit 2
+
+fi
 
 export LDT_ARCH=linux_ifc
 export LIS_ARCH=linux_ifc

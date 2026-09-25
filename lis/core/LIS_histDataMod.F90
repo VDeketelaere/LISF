@@ -457,6 +457,21 @@ module LIS_histDataMod
   public :: LIS_MOC_AC_StExp
   public :: LIS_MOC_AC_StSen
   public :: LIS_MOC_AC_cycle_complete
+  public :: LIS_MOC_AC_BiomassPot
+  public :: LIS_MOC_AC_Tpot
+  public :: LIS_MOC_AC_Runoff
+  public :: LIS_MOC_AC_Drain
+  public :: LIS_MOC_AC_SumGDD
+  public :: LIS_MOC_AC_SowingDayNr
+  public :: LIS_MOC_AC_HIfinal
+  public :: LIS_MOC_AC_DayAnaero
+  public :: LIS_MOC_AC_RootZoneWC_SAT
+  public :: LIS_MOC_AC_FertilityStress
+  public :: LIS_MOC_AC_SumGDDfromDay1
+  public :: LIS_MOC_AC_StSto
+  public :: LIS_MOC_AC_KsPolH
+  public :: LIS_MOC_AC_KsPolC
+  public :: LIS_MOC_AC_KsAer
   ! end AquaCrop
  
   ! RUC 
@@ -995,6 +1010,21 @@ module LIS_histDataMod
    integer :: LIS_MOC_AC_StExp  = -9999
    integer :: LIS_MOC_AC_StSen  = -9999
    integer :: LIS_MOC_AC_cycle_complete  = -9999
+   integer :: LIS_MOC_AC_BiomassPot = -9999
+   integer :: LIS_MOC_AC_Tpot = -9999
+   integer :: LIS_MOC_AC_Runoff = -9999
+   integer :: LIS_MOC_AC_Drain = -9999
+   integer :: LIS_MOC_AC_SumGDD = -9999
+   integer :: LIS_MOC_AC_SowingDayNr = -9999
+   integer :: LIS_MOC_AC_HIfinal = -9999
+   integer :: LIS_MOC_AC_DayAnaero = -9999
+   integer :: LIS_MOC_AC_RootZoneWC_SAT = -9999
+   integer :: LIS_MOC_AC_FertilityStress = -9999
+   integer :: LIS_MOC_AC_SumGDDfromDay1 = -9999
+   integer :: LIS_MOC_AC_StSto = -9999
+   integer :: LIS_MOC_AC_KsPolH = -9999
+   integer :: LIS_MOC_AC_KsPolC = -9999
+   integer :: LIS_MOC_AC_KsAer = -9999
 
 !   <- RUC -> 
    integer :: LIS_MOC_QVG = -9999
@@ -4845,6 +4875,186 @@ contains
          "GDD crop growth cycle completed",rc)
     if ( rc == 1 ) then
        call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_cycle_complete,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"-"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_BiomassPot:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_BiomassPot",&
+         "potential_biomass",&
+         "potential (unstressed) cumulative biomass",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_BiomassPot,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"t/ha"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_Tpot:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_Tpot",&
+         "potential_transpiration",&
+         "potential (unstressed) plant transpiration",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_Tpot,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"mm"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_Runoff:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_Runoff",&
+         "surface_runoff",&
+         "surface runoff",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_Runoff,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"mm"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_Drain:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_Drain",&
+         "deep_drainage",&
+         "deep drainage below the root zone",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_Drain,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"mm"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_SumGDD:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_SumGDD",&
+         "cumulative_growing_degree_days",&
+         "cumulative growing degree days since sowing",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_SumGDD,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"degC-d"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_SowingDayNr:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_SowingDayNr",&
+         "sowing_daynumber",&
+         "AquaCrop internal day-number of sowing/planting (Crop.Day1)",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_SowingDayNr,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"-"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_HIfinal:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_HIfinal",&
+         "reference_harvest_index_after_canopy_decline",&
+         "reference HI adjusted for insufficient green canopy (not actual HI)",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_HIfinal,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"%"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_DayAnaero:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_DayAnaero",&
+         "consecutive_anaerobic_days",&
+         "consecutive days with anaerobic root zone (capped at DelayLowOxygen)",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_DayAnaero,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"d"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_RootZoneWC_SAT:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_RootZoneWC_SAT",&
+         "rootzone_water_content_at_saturation",&
+         "root zone water content at saturation",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_RootZoneWC_SAT,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"mm"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_FertilityStress:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_FertilityStress",&
+         "soil_fertility_stress_applied",&
+         "soil fertility stress level applied (Management%FertilityStress)",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_FertilityStress,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"%"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_SumGDDfromDay1:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_SumGDDfromDay1",&
+         "cumulative_growing_degree_days_from_sowing",&
+         "cumulative growing degree days since sowing (Crop.Day1)",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_SumGDDfromDay1,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"degC-d"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_StSto:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_StSto",&
+         "stomatal_closure_stress",&
+         "stomatal closure stress 100*(1-Tact/Tpot)",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_StSto,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"%"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_KsPolH:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_KsPolH",&
+         "pollination_heat_stress_coefficient",&
+         "pollination heat stress coefficient (1 = no stress)",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_KsPolH,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"-"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_KsPolC:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_KsPolC",&
+         "pollination_cold_stress_coefficient",&
+         "pollination cold stress coefficient (1 = no stress)",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_KsPolC,&
+            LIS_histData(n)%head_lsm_list,&
+            n,1,ntiles,(/"-"/),1,(/"-"/),1,1,1,&
+            model_patch=.true.)
+    endif
+
+    call ESMF_ConfigFindLabel(modelSpecConfig,"AC_KsAer:",rc=rc)
+    call get_moc_attributes(modelSpecConfig, LIS_histData(n)%head_lsm_list, &
+         "AC_KsAer",&
+         "aeration_stress_coefficient",&
+         "root-zone aeration stress coefficient (1 = no stress)",rc)
+    if ( rc == 1 ) then
+       call register_dataEntry(LIS_MOC_LSM_COUNT,LIS_MOC_AC_KsAer,&
             LIS_histData(n)%head_lsm_list,&
             n,1,ntiles,(/"-"/),1,(/"-"/),1,1,1,&
             model_patch=.true.)

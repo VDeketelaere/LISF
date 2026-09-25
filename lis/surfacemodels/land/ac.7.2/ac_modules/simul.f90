@@ -1,6 +1,9 @@
 module ac_simul
 
 use ac_global, only: ActiveCells, &
+                     SetKsPolH_out, &
+                     SetKsPolC_out, &
+                     SetKsAer_out, &
                      ac_zero_threshold, &
                      adjustedksstotoecsw, &
                      BMRange, &
@@ -589,6 +592,7 @@ subroutine DetermineBiomassAndYield(dayi, ETo, TminOnDay, TmaxOnDay, CO2i, &
     real(sp), intent(inout) :: CCw
     real(sp), intent(inout) :: Trw
     integer(int32), intent(inout) :: StressSFadjNEW
+    integer(int32), parameter :: SFadj_max = 99
     integer(int32), intent(inout) :: PreviousStressLevel
     logical, intent(inout) :: StoreAssimilates
     logical, intent(inout) :: MobilizeAssimilates
@@ -844,8 +848,10 @@ subroutine DetermineBiomassAndYield(dayi, ETo, TminOnDay, TmaxOnDay, CO2i, &
                     KsPolWS = KsAny(Wrel, croppol_temp, pLL, 0._sp)
                     ! 2.4c - Ks(pollination) cold stress
                     KsPolCS = KsTemperature((GetCrop_Tcold()-TempRange), real(GetCrop_Tcold(), kind=sp), TminOnDay)
+                    call SetKsPolC_out(KsPolCS)                    
                     ! 2.4d - Ks(pollination) heat stress
                     KsPolHS = KsTemperature((GetCrop_Theat()+TempRange), real(GetCrop_Theat(), kind=sp), TmaxOnDay)
+                    call SetKsPolH_out(KsPolHS)
                     ! 2.4e - Adjust alfa
                     KsPol = KsPolWS
                     if (KsPol > KsPolCS) then
@@ -988,12 +994,12 @@ subroutine DetermineBiomassAndYield(dayi, ETo, TminOnDay, TmaxOnDay, CO2i, &
             StressSFadjNEW = 0
         else
             if (BioAdj <= epsilon(1._sp)) then
-                StressSFadjNEW = 80
+                StressSFadjNEW = SFadj_max
             else
                 if ((Coeffb0 + Coeffb1*BioAdj + Coeffb2*BioAdj*BioAdj) < 0) then
                     StressSFadjNEW = GetManagement_FertilityStress()
-                elseif ((Coeffb0 + Coeffb1*BioAdj + Coeffb2*BioAdj*BioAdj) > 80) then
-                    StressSFadjNEW = 80
+                elseif ((Coeffb0 + Coeffb1*BioAdj + Coeffb2*BioAdj*BioAdj) > SFadj_max) then
+                    StressSFadjNEW = SFadj_max
                 else
                     StressSFadjNEW = roundc(Coeffb0 + Coeffb1*BioAdj + Coeffb2*BioAdj*BioAdj, &
                                             mold=1_int8)
@@ -1251,7 +1257,8 @@ subroutine calculate_transpiration(Tpot, Coeffb0Salt, Coeffb1Salt, Coeffb2Salt)
                                               GetRootZoneWC_Actual(), &
                                               real(GetCrop_AnaeroPoint(), kind=sp), &
                                               GetRootingDepth(), RedFact)
-            TpotMAX = RedFact * TpotMAX
+            call SetKsAer_out(RedFact)
+            TpotMAX = RedFact * TpotMax
         end if
 
         ! 2. extraction of TpotMAX out of the compartments
@@ -3877,6 +3884,11 @@ subroutine DetermineCCiGDD(CCxTotal, CCoTotal, &
 
         ! Only when SumGDDadj > GDDayi
         ! and CCx < CCiToFind
+        ! Guard against division by zero when CCx <= CCiToFind (LB 03/04/2026)
+        if (CCiToFind >= CCx) then
+            RequiredGDD = 0._sp
+            return
+        end if
         ! 1. GDDCGCx to reach CCiToFind on previous day (= SumGDDadj - GDDayi )
         if (CCiToFind <= CCx/2._sp) then
             GDDCGCx = (log(CCiToFind/CCo))/(SumGDDadjCC-GDDayi)
@@ -3989,6 +4001,10 @@ subroutine DetermineCCiGDD(CCxTotal, CCoTotal, &
                 GDDCDCadjusted = 0.0001_sp ! extreme small decline
                 StressSenescence = 0._sp
             end if
+        end if
+        ! Floor to avoid subsequent divisions by 0
+        if (GDDCDCadjusted < 0.0001_sp) then
+            GDDCDCadjusted = 0.0001_sp
         end if
     end subroutine DetermineGDDCDCadjustedWaterStress
 

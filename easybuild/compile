@@ -32,8 +32,8 @@ else
 
     # set a sensible default account depending on cluster
     defA=""
-    if [[ "${VSC_INSTITUTE_CLUSTER:-}" == "genius" || "${VSC_INSTITUTE_CLUSTER:-}" == "wice" ]]; then
-        read -r -p "Please enter the cluster on which to compile (default: cluster's default): " M
+    if [[ "${VSC_INSTITUTE_LOCAL:-}" == "leuven" ]]; then
+        read -r -p "Please enter the cluster on which to compile (wice, mindwell, default: cluster's default): " M
         if [[ -n "${M:-}" ]]; then
             opts+=("-M" "$M")
         fi

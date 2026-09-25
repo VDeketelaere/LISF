@@ -22,6 +22,9 @@ subroutine AC72_main(n)
 !!! MB_AC70    
   use ac_utils, only: roundc
   use ac_global, only:     DegreesDay,&
+       GetKsPolH_out,&
+       GetKsPolC_out,&
+       GetKsAer_out,&
        CanopyCoverNoStressSF,&
        CCiNoWaterStressSF,&
        GetSimulation_EffectStress_CDecline,&
@@ -509,10 +512,11 @@ subroutine AC72_main(n)
   use AC72_lsmMod
   use ac72_prep_f
   use LIS_constantsMod, only: LIS_CONST_TKFRZ
-  use LIS_coreMod, only: LIS_rc, LIS_surface, LIS_domain
+  use LIS_coreMod, only: LIS_rc, LIS_surface, LIS_domain, LIS_config
   use LIS_histDataMod
   use LIS_logMod, only     : LIS_logunit, LIS_endrun
   use LIS_timeMgrMod, only : LIS_isAlarmRinging, LIS_get_julhr
+  use ESMF
 #if (defined SPMD)
   use LIS_mpiMod
 #endif
@@ -532,6 +536,8 @@ subroutine AC72_main(n)
   integer              :: l
   integer              :: irr_record_flag, DNr ! for irri file management
   character(250)       :: TempStr
+  integer              :: rc
+  logical              :: isAgERA5
 
   ! Initialization management
   integer              :: read_Trecord_flag, InitializeRun_flag
@@ -540,6 +546,7 @@ subroutine AC72_main(n)
   real                 :: CCx_range_temp
   real                 :: GDD_endgrowth_temp
   real                 :: CCi_final_temp
+  real                 :: tmp_StSto
   integer              :: ens_n
 
   real                 :: tmp_pres, tmp_precip, tmp_tmax, tmp_tmin   ! Weather Forcing
@@ -568,6 +575,13 @@ subroutine AC72_main(n)
   !    index of the nest
   !  \end{description}
   !EOP
+
+   ! Check if using AgERA5
+   isAgERA5 = .false.
+   call ESMF_ConfigFindLabel(LIS_config, "AgERA5 forcing directory:", rc = rc)
+   if (rc == ESMF_SUCCESS) then
+      isAgERA5 = .true.
+   endif
 
   ! define variables for AC72
   ! check AC72 alarm. If alarm is ring, run model.
@@ -605,26 +619,90 @@ subroutine AC72_main(n)
       !!------ This Block Is Where We Obtain Weather Forcing ------------------------------!!
       ! retrieve forcing data from AC72_struc(n)%ac72(t) and assign to local variables
 
+   if (isAgERA5) then
+      !-----------------------------------------------------------------------
+      ! AgERA5 path: use daily Tmin/Tmax/Rainf/ETo
+      ! Skip PRES, TDEW, SWRAD, WIND checks (not provided)
+      !-----------------------------------------------------------------------
+      
+      ! PRECIP: daily precipitation (mm/day)
+      if (AC72_struc(n)%forc_count > 0) then
+         tmp_precip = (AC72_struc(n)%ac72(t)%prcp / AC72_struc(n)%forc_count) * 3600.0 * 24.0
+      else
+         tmp_precip = AC72_struc(n)%ac72(t)%prcp * 3600.0 * 24.0
+      endif
+      
+      ! TMAX/TMIN: Kelvin -> Celsius
+      tmp_tmax = AC72_struc(n)%ac72(t)%tmax - LIS_CONST_TKFRZ
+      tmp_tmin = AC72_struc(n)%ac72(t)%tmin - LIS_CONST_TKFRZ
+      
+      ! ETo: use AgERA5 ETo directly (daily value)
+      tmp_eto = AC72_struc(n)%ac72(t)%eto * 86400
+      
+      ! Minimal validity checks for vars actually used in AgERA5 path
+      if (tmp_precip .eq. LIS_rc%udef) then
+         write(LIS_logunit, *) "undefined value for PRECIP (AgERA5) in AC72"
+         call LIS_endrun()
+      endif
+      
+      if (tmp_tmax .eq. LIS_rc%udef) then
+         write(LIS_logunit, *) "undefined value for TMAX (AgERA5) in AC72"
+         call LIS_endrun()
+      endif
+      
+      if (tmp_tmin .eq. LIS_rc%udef) then
+         write(LIS_logunit, *) "undefined value for TMIN (AgERA5) in AC72"
+         call LIS_endrun()
+      endif
+      
+      if (tmp_eto .eq. LIS_rc%udef) then
+         write(LIS_logunit, *) "undefined value for ETo (AgERA5) in AC72"
+         call LIS_endrun()
+      endif
+      
+      ! Pass to AquaCrop
+      call SetRain(tmp_precip)
+      call SetETo(tmp_eto)
+      call SetTmin(tmp_tmin)
+      call SetTmax(tmp_tmax)
+
+   else
+      !-----------------------------------------------------------------------
+      ! Non-AgERA5 path: average subdaily fields and compute ETo
+      !-----------------------------------------------------------------------
+      
+      ! Effective count guard
+      if (AC72_struc(n)%forc_count <= 0) then
+         write(LIS_logunit, *) "AC72_main: forc_count <= 0 in non-AgERA5 path"
+         call LIS_endrun()
+      endif
+      
+      ! Compute ETo from meteorological variables
+      call ac72_ETo_calc(tmp_pres, tmp_tmax, tmp_tmin, tmp_tdew, &
+                        tmp_wind, tmp_swrad, tmp_elev, lat, tmp_eto)
+      
+      AC72_struc(n)%ac72(t)%eto = tmp_eto
+      
       ! PRES: Daily average surface pressure (kPa)
-      tmp_pres      = (AC72_struc(n)%ac72(t)%psurf / AC72_struc(n)%forc_count) / 1000
-
-      ! PRECIP: Total daily precipitation (rain+snow) (mm)
-      tmp_precip    = (AC72_struc(n)%ac72(t)%prcp / AC72_struc(n)%forc_count) * 3600. * 24. !Convert from kg/ms2 to mm/d
-
+      tmp_pres = (AC72_struc(n)%ac72(t)%psurf / AC72_struc(n)%forc_count) / 1000.0
+      
+      ! PRECIP: Total daily precipitation (mm)
+      tmp_precip = (AC72_struc(n)%ac72(t)%prcp / AC72_struc(n)%forc_count) * 3600. * 24.
+      
       ! TMAX: maximum daily air temperature (degC)
-      tmp_tmax      = AC72_struc(n)%ac72(t)%tmax - LIS_CONST_TKFRZ !Convert from K to C
-
+      tmp_tmax = AC72_struc(n)%ac72(t)%tmax - LIS_CONST_TKFRZ
+      
       ! TMIN: minimum daily air temperature (degC)
-      tmp_tmin      = AC72_struc(n)%ac72(t)%tmin - LIS_CONST_TKFRZ !Convert from K to C
-
+      tmp_tmin = AC72_struc(n)%ac72(t)%tmin - LIS_CONST_TKFRZ
+      
       ! TDEW: average daily dewpoint temperature (degC)
-      tmp_tdew      = (AC72_struc(n)%ac72(t)%tdew / AC72_struc(n)%forc_count) - LIS_CONST_TKFRZ !Convert from K to C
-
+      tmp_tdew = (AC72_struc(n)%ac72(t)%tdew / AC72_struc(n)%forc_count) - LIS_CONST_TKFRZ
+      
       ! SW_RAD: daily total incoming solar radiation (MJ/(m2d))
-      tmp_swrad     = (AC72_struc(n)%ac72(t)%swdown / AC72_struc(n)%forc_count) * 0.0864 !Convert from W/m2 to MJ/(m2d)
-
+      tmp_swrad = (AC72_struc(n)%ac72(t)%swdown / AC72_struc(n)%forc_count) * 0.0864
+      
       ! Wind: daily average wind speed (m/s)
-      tmp_wind      = AC72_struc(n)%ac72(t)%wndspd / AC72_struc(n)%forc_count
+      tmp_wind = AC72_struc(n)%ac72(t)%wndspd / AC72_struc(n)%forc_count
 
       ! check validity of PRES
       if(tmp_pres .eq. LIS_rc%udef) then
@@ -675,11 +753,14 @@ subroutine AC72_main(n)
          call LIS_endrun()
       endif
 
+
       ! Call ETo subroutine
       call ac72_ETo_calc(tmp_pres, tmp_tmax, tmp_tmin, tmp_tdew, &
             tmp_wind, tmp_swrad, &
             tmp_elev, lat, tmp_eto)
       AC72_struc(n)%ac72(t)%eto = tmp_eto
+
+   endif
 
       if (AC72_struc(n)%ac72(t)%valid_sim.eq.1) then ! prepare and run AquaCrop
 
@@ -1089,13 +1170,26 @@ subroutine AC72_main(n)
             ! End variable CCx
 
              ! InitializeRunPart
-             if (AC72_struc(n)%variable_CCx .and. (LIS_rc%nensem(n) .gt. 2)) then
-               call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
-                  AC72_struc(n)%variable_CCx,CCx_temp,CCx_range_temp,ens_n,LIS_rc%nensem(n))
+            write(*,*) 'BREL DEBUG: main call site, use_brel=', AC72_struc(n)%use_brel, ' n=', n
+            if (AC72_struc(n)%variable_CCx .and. (LIS_rc%nensem(n) .gt. 2)) then
+               if (AC72_struc(n)%use_brel) then
+                  call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
+                     AC72_struc(n)%variable_CCx,CCx_temp,CCx_range_temp,ens_n,LIS_rc%nensem(n),&
+                     Brel_local=AC72_struc(n)%ac72(t)%Brel)
+               else
+                  call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
+                     AC72_struc(n)%variable_CCx,CCx_temp,CCx_range_temp,ens_n,LIS_rc%nensem(n))
+               endif
             else
-               call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
-               AC72_struc(n)%variable_CCx)
+               if (AC72_struc(n)%use_brel) then
+                  call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
+                     AC72_struc(n)%variable_CCx,Brel_local=AC72_struc(n)%ac72(t)%Brel)
+               else
+                  call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
+                     AC72_struc(n)%variable_CCx)
+               endif
             endif
+            
              call InitializeSimulationRunPart2()
              AC72_struc(n)%ac72(t)%HarvestNow = .false. ! Initialize to false
              ! Check if enough GDDays to complete cycle
@@ -1326,6 +1420,9 @@ subroutine AC72_main(n)
          AC72_struc(n)%ac72(t)%Tact = GetTact()
          AC72_struc(n)%ac72(t)%Tpot = GetTpot()
          AC72_struc(n)%ac72(t)%TactWeedInfested = GetTactWeedInfested()
+         AC72_struc(n)%ac72(t)%KsPolH_out = GetKsPolH_out()
+         AC72_struc(n)%ac72(t)%KsPolC_out = GetKsPolC_out()
+         AC72_struc(n)%ac72(t)%KsAer_out = GetKsAer_out()
          AC72_struc(n)%ac72(t)%tmax = GetTmax()
          AC72_struc(n)%ac72(t)%tmin =GetTmin()
 
@@ -1492,6 +1589,56 @@ subroutine AC72_main(n)
              vlevel=1, unit="-", direction="-", surface_type = LIS_rc%lsm_index)
         ![ 24] output variable: CCxAdjusted (unit=-).  *** initial canopy cover in water stress conditions
         call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_CCxAdjusted, value = AC72_struc(n)%ac72(t)%Crop%CCxAdjusted, &
+             vlevel=1, unit="-", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 25] output variable: BiomassPot (unit=t/ha).  *** potential (unstressed) cumulative biomass
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_BiomassPot, value = AC72_struc(n)%ac72(t)%SumWaBal%BiomassPot, &
+             vlevel=1, unit="t ha-1", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 26] output variable: Tpot (unit=mm).  *** potential (unstressed) plant transpiration
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_Tpot, value = AC72_struc(n)%ac72(t)%SumWaBal%Tpot, &
+             vlevel=1, unit="mm", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 27] output variable: Runoff (unit=mm).  *** surface runoff
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_Runoff, value = AC72_struc(n)%ac72(t)%SumWaBal%Runoff, &
+             vlevel=1, unit="mm", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 28] output variable: Drain (unit=mm).  *** deep drainage below the root zone
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_Drain, value = AC72_struc(n)%ac72(t)%SumWaBal%Drain, &
+             vlevel=1, unit="mm", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 29] output variable: SumGDD (unit=degC-day).  *** cumulative growing degree days since sowing
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_SumGDD, value = AC72_struc(n)%ac72(t)%SumGDD, &
+             vlevel=1, unit="degC-d", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 30] output variable: SowingDayNr (unit=-).  *** AquaCrop internal day-number of sowing/planting (Crop.Day1)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_SowingDayNr, value = real(AC72_struc(n)%ac72(t)%crop%Day1), &
+             vlevel=1, unit="-", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 31] output variable: HIfinal (unit=%).  *** reference HI adjusted for insufficient green canopy (not actual HI)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_HIfinal, value = real(AC72_struc(n)%ac72(t)%Simulation%HIfinal), &
+             vlevel=1, unit="%", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 32] output variable: DayAnaero (unit=d).  *** consecutive days with anaerobic root zone (capped at DelayLowOxygen)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_DayAnaero, value = real(AC72_struc(n)%ac72(t)%Simulation%DayAnaero), &
+             vlevel=1, unit="d", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 33] output variable: RootZoneWC_SAT (unit=mm).  *** root zone water content at saturation
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_RootZoneWC_SAT, value = AC72_struc(n)%ac72(t)%RootZoneWC_SAT, &
+             vlevel=1, unit="mm", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 34] output variable: FertilityStress (unit=%).  *** soil fertility stress level applied
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_FertilityStress, value = real(AC72_struc(n)%ac72(t)%Management%FertilityStress), &
+             vlevel=1, unit="%", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 35] output variable: SumGDDfromDay1 (unit=degC-day).  *** cumulative growing degree days since sowing (Crop.Day1)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_SumGDDfromDay1, value = AC72_struc(n)%ac72(t)%Simulation%SumGDDfromDay1, &
+             vlevel=1, unit="degC-d", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 36] output variable: StSto (unit=%).  *** stomatal closure stress, 100*(1-Tact/Tpot) as in AquaCrop daily output
+        if (AC72_struc(n)%ac72(t)%Tpot > epsilon(0.)) then
+           tmp_StSto = 100. * (1. - AC72_struc(n)%ac72(t)%Tact / AC72_struc(n)%ac72(t)%Tpot)
+        else
+           tmp_StSto = LIS_rc%udef
+        endif
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_StSto, value = tmp_StSto, &
+             vlevel=1, unit="%", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 37] output variable: KsPolH (unit=-).  *** pollination heat stress coefficient (1 = no stress)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_KsPolH, value = AC72_struc(n)%ac72(t)%KsPolH_out, &
+             vlevel=1, unit="-", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 38] output variable: KsPolC (unit=-).  *** pollination cold stress coefficient (1 = no stress)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_KsPolC, value = AC72_struc(n)%ac72(t)%KsPolC_out, &
+             vlevel=1, unit="-", direction="-", surface_type = LIS_rc%lsm_index)
+        ![ 39] output variable: KsAer (unit=-).  *** root-zone aeration stress coefficient (1 = no stress)
+        call LIS_diagnoseSurfaceOutputVar(n, t, LIS_MOC_AC_KsAer, value = AC72_struc(n)%ac72(t)%KsAer_out, &
              vlevel=1, unit="-", direction="-", surface_type = LIS_rc%lsm_index)
 
         !  Reset forcings

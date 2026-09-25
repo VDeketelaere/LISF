@@ -277,6 +277,23 @@ subroutine AC72_readcrd()
       endif
    enddo
 
+   ! Spatially varying Brel (soil fertility stress from Brel = 1 - SF)
+   do n=1, LIS_rc%nnest
+      call ESMF_ConfigFindLabel(LIS_config, "AquaCrop.7.2 use spatially varying Brel:", rc = rc)
+      if (rc == 0) then
+            call ESMF_ConfigGetAttribute(LIS_config, &
+               AC72_struc(n)%use_brel, rc=rc)
+      else
+            AC72_struc(n)%use_brel = .false.
+      endif
+      if (AC72_struc(n)%use_brel) then
+         write(LIS_logunit, *)'[INFO] AC72 spatially varying Brel turned ON'
+      else
+         write(LIS_logunit, *)'[INFO] AC72 spatially varying Brel turned OFF, '//&
+            'using constant soil fertility stress from the management file'
+      endif
+   enddo
+
   ! AquaCrop model soil parameter table
   call ESMF_ConfigFindLabel(LIS_config, "AquaCrop.7.2 soil parameter table:", rc = rc)
   do n=1, LIS_rc%nnest
@@ -361,6 +378,7 @@ subroutine AC72_readcrd()
      AC72_struc(n)%LDT_ncvar_cdc = 'CDC'
      AC72_struc(n)%LDT_ncvar_sowday = 'AC_SOWDAY'
      AC72_struc(n)%LDT_ncvar_sowmonth = 'AC_SOWMONTH'
+     AC72_struc(n)%LDT_ncvar_brel = 'AC_Brel'
   enddo
 
   ! set default restart format to netcdf

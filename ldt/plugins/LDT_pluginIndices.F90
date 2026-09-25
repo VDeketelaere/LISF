@@ -146,6 +146,7 @@ module LDT_pluginIndices
    character*50, public,  parameter :: LDT_princetonId    = "PRINCETON"
    character*50, public,  parameter :: LDT_merra2Id       = "MERRA2"
    character*50, public,  parameter :: LDT_era5Id         = "ERA5"
+   character*50, public,  parameter :: LDT_agera5Id       = "AgERA5"
    character*50, public,  parameter :: LDT_gswp1Id        = "GSWP1"
    character*50, public,  parameter :: LDT_gswp2Id        = "GSWP2"
    character*50, public,  parameter :: LDT_nldas2Id       = "NLDAS2"

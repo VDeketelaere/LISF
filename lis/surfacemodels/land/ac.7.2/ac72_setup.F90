@@ -660,6 +660,30 @@ subroutine AC72_setup()
         enddo
      endif
 
+     ! Read spatially varying Brel (relative biomass; Brel = 1 - SF), used to
+     ! set the applied soil fertility stress per tile in InitializeRunPart1.
+     ! Every active AC72 tile must have a valid Brel: masking the domain so that
+     ! AC72 is only active where Brel exists is done in preprocessing (like masking out deficient GDD).
+     if (AC72_struc(n)%use_brel) then
+        write(LIS_logunit,*) "AC72: reading parameter Brel from ", trim(LIS_rc%paramfile(n))
+        call LIS_read_param(n, trim(AC72_struc(n)%LDT_ncvar_brel), placeholder)
+        do t = 1, LIS_rc%npatch(n, mtype)
+           col = LIS_surface(n, mtype)%tile(t)%col
+           row = LIS_surface(n, mtype)%tile(t)%row
+           AC72_struc(n)%ac72(t)%Brel = placeholder(col, row)
+           if (AC72_struc(n)%ac72(t)%Brel == LIS_rc%udef) then
+              write(LIS_logunit,*) "[ERR] AC72: Brel is undefined at active tile ",&
+                   t, " (col=", col, ", row=", row, ")"
+              write(LIS_logunit,*) "[ERR] Mask the domain so AC72 is only active where Brel is valid."
+              call LIS_endrun
+           endif
+        enddo
+     else
+        do t = 1, LIS_rc%npatch(n, mtype)
+           AC72_struc(n)%ac72(t)%Brel = LIS_rc%udef
+        enddo
+     endif
+
      ! Read and correct climatology
      ! Tmin and Tmax are computed directly from the forcing input files
      if (trim(LIS_rc%metforc_blend_alg).ne."overlay") then
@@ -702,7 +726,10 @@ subroutine AC72_setup()
               write(LIS_logunit,*) "[ERR] AC72 only runs with NLDAS 2/10m fields"
               write(LIS_logunit,*) "[ERR] Program stopping ..."
               call LIS_endrun
-           endif                 
+           endif    
+        elseif (LIS_rc%metforc(m) == "AgERA5") then
+              AC72_struc(n)%forchgt_tq = 2
+              AC72_struc(n)%forchgt_uv = 2                       
         else
            write(LIS_logunit,*) "[ERR] AC72 only runs with the following met forcings: ERA5, MERRA2, NLDAS2"
            write(LIS_logunit,*) "[ERR] Program stopping ..."
@@ -849,6 +876,8 @@ subroutine AC72_setup()
                     elevdiff = (LIS_domain(n)%tile(t)%elev + 2) &
                     - (LIS_forc(n,m)%modelelev(LIS_domain(n)%tile(t)%index) + AC72_struc(n)%forchgt_tq)                   
                     tmp = placeholder(col, row) + (lapse * elevdiff) ! apply lapse-rate corr
+                 elseif (LIS_rc%metforc(m) == "AgERA5") then
+                     tmp = placeholder(col, row)
                  else
                     write(LIS_logunit,*) "[ERR] AC72 only runs with lapse-rate correction turned ON."
                     write(LIS_logunit,*) "[ERR] Program stopping ..."
@@ -874,6 +903,8 @@ subroutine AC72_setup()
                     elevdiff = (LIS_domain(n)%tile(t)%elev + 2) &
                     - (LIS_forc(n,m)%modelelev(LIS_domain(n)%tile(t)%index) + AC72_struc(n)%forchgt_tq)                    
                     tmp = placeholder(col, row) + (lapse * elevdiff) ! apply lapse-rate corr
+                 elseif (LIS_rc%metforc(m) == "AgERA5") then
+                     tmp = placeholder(col, row)                    
                  else
                     write(LIS_logunit,*) "[ERR] AC72 only runs with lapse-rate correction turned ON."
                     write(LIS_logunit,*) "[ERR] Program stopping ..."
@@ -1370,13 +1401,26 @@ subroutine AC72_setup()
         ! Initialize
 
          ! InitializeRunPart1
-         if (AC72_struc(n)%variable_CCx .and. (LIS_rc%nensem(n) .gt. 2)) then
-            call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
-               AC72_struc(n)%variable_CCx,CCx_temp,CCx_range_temp,ens_n,LIS_rc%nensem(n))
+         write(*,*) 'BREL DEBUG: setup call site, use_brel=', AC72_struc(n)%use_brel, ' n=', n
+        if (AC72_struc(n)%variable_CCx .and. (LIS_rc%nensem(n) .gt. 2)) then
+            if (AC72_struc(n)%use_brel) then
+               call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
+                  AC72_struc(n)%variable_CCx,CCx_temp,CCx_range_temp,ens_n,LIS_rc%nensem(n),&
+                  Brel_local=AC72_struc(n)%ac72(t)%Brel)
+            else
+               call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
+                  AC72_struc(n)%variable_CCx,CCx_temp,CCx_range_temp,ens_n,LIS_rc%nensem(n))
+            endif
          else
-            call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
-               AC72_struc(n)%variable_CCx)
+            if (AC72_struc(n)%use_brel) then
+               call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
+                  AC72_struc(n)%variable_CCx,Brel_local=AC72_struc(n)%ac72(t)%Brel)
+            else
+               call InitializeRunPart1(int(AC72_struc(n)%irun, kind=int8), AC72_struc(n)%ac72(t)%TheProjectType,&
+                  AC72_struc(n)%variable_CCx)
+            endif
          endif
+         
          call InitializeSimulationRunPart2()
          ! Check if enough GDDays to complete cycle, if not, turn on flag to warn the user
          AC72_struc(n)%AC72(t)%crop = GetCrop()
