@@ -236,7 +236,7 @@ contains
             daily_tmin_arr(t,i) = agera5_struc(n)%metdata1(1, 3, gindex)  ! Tmin [K]
             daily_tmax_arr(t,i) = agera5_struc(n)%metdata1(1, 4, gindex)  ! Tmax [K]
             if (AC72_struc(n)%Rainfall_crit) then
-               daily_pcp_arr(t,i) = agera5_struc(n)%metdata1(1, 1, gindex)
+               daily_pcp_arr(t,i) = agera5_struc(n)%metdata1(1, 1, gindex) * 86400.0
             endif
          enddo
             
