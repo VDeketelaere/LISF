@@ -593,6 +593,12 @@ real(sp) :: Bout
 real(sp) :: GDDayi
 real(sp) :: CO2i
 real(sp) :: FracBiomassPotSF
+real(sp) :: BrelTarget = -1._sp
+    !! CROPWAVES: target relative biomass (0-1) passed from LIS (AC_Brel); -1 = not used
+logical :: BrelRegressionChecked = .false.
+logical :: BrelRegressionOn = .false.
+    !! CROPWAVES: map Brel to fertility stress via the calibrated stress-biomass relation
+    !! (switched on with environment variable AC_BREL_REGRESSION=1; off = original 100*(1-Brel))
 real(sp) :: SumETo,SumGDD, Ziprev,SumGDDPrev
 real(sp) :: CCxWitheredTpotNoS
 real(sp) :: Coeffb0,Coeffb1,Coeffb2
@@ -3958,6 +3964,7 @@ subroutine RelationshipsForFertilityAndSaltStress()
     real(sp) :: BM80_temp, BM90_temp, BM100_temp
     integer(int8) :: BioTop, BioLow
     real(sp) :: StrTop, StrLow
+    real(sp) :: BrelPct, StrBrel
 
     ! 1. Soil fertility
     call SetFracBiomassPotSF(1._sp)
@@ -4003,6 +4010,20 @@ subroutine RelationshipsForFertilityAndSaltStress()
         call SetCoeffb0(real(undef_int, kind=sp))
         call SetCoeffb1(real(undef_int, kind=sp))
         call SetCoeffb2(real(undef_int, kind=sp))
+    end if
+
+    ! 1.a' CROPWAVES: fertility stress from the Brel target via the relation just fitted
+    !      S = b0 + b1*B + b2*B**2 (B in %), the same relation that 1.b inverts, so that
+    !      FracBiomassPotSF = Brel instead of FracBiomassPotSF = f(100*(1-Brel))
+    if ((BrelTarget >= 0._sp) .and. GetCrop_StressResponse_Calibrated()) then
+        BrelPct = 100._sp * min(1._sp, BrelTarget)
+        if (BrelPct >= 99.5_sp) then
+            StrBrel = 0._sp
+        else
+            StrBrel = GetCoeffb0() + GetCoeffb1()*BrelPct + GetCoeffb2()*BrelPct*BrelPct
+        end if
+        StrBrel = max(0._sp, min(100._sp, StrBrel))
+        call SetManagement_FertilityStress(roundc(StrBrel, mold=1_int32))
     end if
 
     ! 1.b Soil fertility : FracBiomassPotSF
@@ -6780,6 +6801,7 @@ subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_
     real                          :: GDD_endgrowth_temp
     real                          :: CCi_final_temp
     integer(int32)                :: FertStress_local
+    character(len=8)              :: EnvVal
     type(rep_sum) :: SumWaBal_temp, PreviousSum_temp
 
     if (TheProjectType == typeproject_typenone) then
@@ -6789,6 +6811,13 @@ subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_
 
     call LoadSimulationRunProject(int(NrRun, kind=int32))
 
+    if (.not. BrelRegressionChecked) then
+        call get_environment_variable('AC_BREL_REGRESSION', EnvVal)
+        BrelRegressionOn = (trim(EnvVal) == '1')
+        BrelRegressionChecked = .true.
+        write(*,*) 'CROPWAVES: AC_BREL_REGRESSION on = ', BrelRegressionOn
+    end if
+    BrelTarget = -1._sp
     if (present(Brel_local)) then
         FertStress_local = roundc(100._sp * (1._sp - Brel_local), mold=1_int32)
         if (FertStress_local < 0_int32) then
@@ -6797,6 +6826,7 @@ subroutine InitializeRunPart1(NrRun, TheProjectType,variable_CCx,CCx_config,CCx_
             FertStress_local = 100_int32
         endif
         call SetManagement_FertilityStress(FertStress_local)
+        if (BrelRegressionOn) BrelTarget = real(Brel_local, kind=sp)
     endif
 
     ! Variable CCx ! needed for perturbation of CCx
