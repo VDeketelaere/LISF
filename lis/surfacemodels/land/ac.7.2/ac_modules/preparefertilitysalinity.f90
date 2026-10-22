@@ -406,6 +406,9 @@ subroutine StressBiomassRelationshipForTnxReference(TheDaysToCCini, TheGDDaysToC
             (StressResponse%RedCGC == 0))then
             L12SF = L12
             GDDL12SF = GDDL12
+            if ((TheModeCycle == modeCycle_GDDays) .and. (GDDL12SF < GDDL123)) then
+                RatDGDD = (L123-L12SF)*1._sp/(GDDL123-GDDL12SF)
+            end if
         else
             call TimeToMaxCanopySF(CCo, CGC, CCx, L0, L12, L123, LFlor,&
                    LengthFlor, CropDeterm, L12SF, StressResponse%RedCGC,&
